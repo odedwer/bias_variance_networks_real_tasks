@@ -8,6 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import datasets
 from torchvision import transforms
 from tqdm import tqdm
+
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 from modules import AlexNet
@@ -111,72 +112,91 @@ test_loader = get_test_loader(data_dir='./data',
                               batch_size=64)
 
 num_classes = 10
-num_epochs = 30
+num_epochs = 20
 batch_size = 64
 learning_rate = 0.005
 
-b_scale = 10
-model = AlexNet(np.sqrt(5), b_scale, num_classes).to(device)
-writer = SummaryWriter()
-model.reinitialize(seed=1)
+for reinitialize, b_scale in [(False, 1), (True, 0.1), (True, 1), (True, 10)]:
+    w_scale = np.sqrt(5)
+    torch.manual_seed(42)
+    model = AlexNet(w_scale, b_scale, num_classes).to(device)
+    if reinitialize:
+        model.reinitialize(seed=1)
 
-# Loss and optimizer
-criterion = nn.CrossEntropyLoss()
-# optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, weight_decay=0.005, momentum=0.9)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    torch.manual_seed(42)
+    # Loss and optimizer
+    criterion = nn.CrossEntropyLoss()
 
-# Train the model
-total_step = len(train_loader)
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
 
-total_step = len(train_loader)
+    params = {
+            'lr': learning_rate, 'batch size': batch_size,
+            'b_scale': b_scale, 'w_scale': w_scale, 'loss': criterion.__class__.__name__,
+            'optimizer': optimizer.__class__.__name__, 'reinitialize': reinitialize
+        }
+    name = "alexnet_" + "_".join([f"{k}={v}" for k, v in params.items()])
+    print("Model params:\n", name)
+    writer = SummaryWriter("runs/" + name)
+    # writer.add_hparams(
+    #     {
+    #         'lr': learning_rate, 'batch size': batch_size,
+    #         'b_scale': b_scale, 'w_scale': w_scale, 'loss': criterion.__class__.__name__,
+    #         'optimizer': optimizer.__class__.__name__, 'reinitialize': reinitialize
+    #     },
+    #     {}
+    # )
 
-for epoch in range(num_epochs):
-    for i, (images, labels) in enumerate(train_loader):
-        # Move tensors to the configured device
-        images = images.to(device)
-        labels = labels.to(device)
+    # Train the model
+    total_step = len(train_loader)
 
-        # Forward pass
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        writer.add_scalar("Loss/train", loss, epoch)
-
-        # Backward and optimize
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-    print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
-          .format(epoch + 1, num_epochs, i + 1, total_step, loss.item()))
-
-    # Validation
-    with torch.no_grad():
-        correct = 0
-        total = 0
-        for images, labels in valid_loader:
+    for epoch in range(num_epochs):
+        for i, (images, labels) in enumerate(train_loader):
+            # Move tensors to the configured device
             images = images.to(device)
             labels = labels.to(device)
+
+            # Forward pass
             outputs = model(images)
-            # add validation loss to tensorboard
             loss = criterion(outputs, labels)
-            writer.add_scalar("Loss/validation", loss, epoch)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-            del images, labels, outputs
-        writer.add_scalar("Accuracy/validation", 100 * correct / total, epoch)
-        print('Accuracy of the network on the {} validation images: {} %'.format(5000, 100 * correct / total))
+            writer.add_scalar("Loss/train", loss, epoch)
 
-writer.flush()
+            # Backward and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-os.makedirs("models", exist_ok=True)
-# find the name for the model
-model_name = "alexnet"
-# if exists, increment the model name
-i=1
-while os.path.exists(f"models/{model_name}" + ".pth"):
-    model_name = "alexnet"+str(i)
-    i += 1
+        print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
+              .format(epoch + 1, num_epochs, i + 1, total_step, loss.item()))
 
-torch.save(model.state_dict(), "models/" + model_name+".pth")
+        # Validation
+        with torch.no_grad():
+            correct = 0
+            total = 0
+            for images, labels in valid_loader:
+                images = images.to(device)
+                labels = labels.to(device)
+                outputs = model(images)
+                # add validation loss to tensorboard
+                loss = criterion(outputs, labels)
+                writer.add_scalar("Loss/validation", loss, epoch)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+                del images, labels, outputs
+            writer.add_scalar("Accuracy/validation", 100 * correct / total, epoch)
+            print('Accuracy of the network on the {} validation images: {} %'.format(5000, 100 * correct / total))
+
+    writer.flush()
+    writer.close()
+
+    os.makedirs("models", exist_ok=True)
+    # find the name for the model
+    model_name = "alexnet"
+    # if exists, increment the model name
+    i = 1
+    while os.path.exists(f"models/{model_name}" + ".pth"):
+        model_name = "alexnet" + str(i)
+        i += 1
+
+    torch.save(model.state_dict(), "models/" + model_name + ".pth")
