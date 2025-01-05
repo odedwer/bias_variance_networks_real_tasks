@@ -50,7 +50,7 @@ class BiasVarianceNetwork(nn.Module):
 # Write alexnet with reinitialization
 
 class AlexNet(BiasVarianceNetwork):
-    def __init__(self, w_scale, b_scale, num_classes=1000):
+    def __init__(self, w_scale, b_scale, num_classes=1000, freeze_bias=False):
         super(AlexNet, self).__init__(w_scale, b_scale, num_classes=num_classes)
         self.layer1 = nn.Sequential()
         self.layer1.add_module("l1_conv", nn.Conv2d(3, 96, kernel_size=11, stride=4, padding=0))
@@ -92,6 +92,16 @@ class AlexNet(BiasVarianceNetwork):
 
         self.fc2 = nn.Sequential()
         self.fc2.add_module("fc2", nn.Linear(4096, num_classes))
+
+        if freeze_bias:
+            self.layer1[0].bias.requires_grad = False
+            self.layer2[0].bias.requires_grad = False
+            self.layer3[0].bias.requires_grad = False
+            self.layer4[0].bias.requires_grad = False
+            self.layer5[0].bias.requires_grad = False
+            self.fc[1].bias.requires_grad = False
+            self.fc1[1].bias.requires_grad = False
+            self.fc2[1].bias.requires_grad = False
 
     def forward(self, x):
         out = self.layer1(x)
