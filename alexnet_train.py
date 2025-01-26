@@ -1,5 +1,6 @@
 import datetime
 import os
+from itertools import product
 
 import numpy as np
 import torch
@@ -17,7 +18,6 @@ def get_device():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print("Using device: " + str(device))
     return device
-
 
 def get_train_valid_loader(data_dir,
                            batch_size,
@@ -117,6 +117,8 @@ def get_summary_writer(model_name, **kwargs):
     return SummaryWriter(log_dir=os.path.join("runs", exp_name).replace("\\", "/")), exp_name
 
 
+
+
 def get_params(freeze_bias, num_classes, num_epochs, batch_sizes, learning_rate, b_scales, w_scales):
     params = []
     for fb in freeze_bias:
@@ -206,7 +208,6 @@ def epoch_validation(criterion, epoch, model, valid_loader, writer):
         total = 0
         for images, labels in valid_loader:
             outputs = model(images)
-            # add validation loss to tensorboard
             loss = criterion(outputs, labels)
             writer.add_scalar("Loss/validation", loss, epoch)
             _, predicted = torch.max(outputs.data, 1)

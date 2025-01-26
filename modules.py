@@ -128,6 +128,16 @@ class AlexNet(BiasVarianceNetwork):
             else:
                 assert len(freeze_bias) == 8
 
+        if freeze_bias:
+            self.layer1[0].bias.requires_grad = False
+            self.layer2[0].bias.requires_grad = False
+            self.layer3[0].bias.requires_grad = False
+            self.layer4[0].bias.requires_grad = False
+            self.layer5[0].bias.requires_grad = False
+            self.fc[1].bias.requires_grad = False
+            self.fc1[1].bias.requires_grad = False
+            self.fc2[0].bias.requires_grad = False
+
     def forward(self, x):
         out = self.layer1(x)
         out = self.layer2(out)
