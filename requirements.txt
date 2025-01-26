@@ -6,3 +6,4 @@ torchvision
 scikit-learn
 tqdm
 tensorboard
+pandas

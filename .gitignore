@@ -1,2 +1,5 @@
 .venv/*
 .idea/*
+runs/*
+models/*
+data/*
