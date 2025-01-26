@@ -1,6 +1,5 @@
 import datetime
 import os
-from itertools import product
 
 import numpy as np
 import torch
@@ -13,11 +12,17 @@ from tqdm import tqdm
 import pandas as pd
 from modules import AlexNet, DeviceDataLoader
 from clusterify import clusterify, finalize
+import os
+import sys
+
+DIR_PATH = R""
+
 
 def get_device():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print("Using device: " + str(device))
     return device
+
 
 def get_train_valid_loader(data_dir,
                            batch_size,
@@ -114,22 +119,23 @@ def get_summary_writer(model_name, **kwargs):
     exp_name = os.path.join(timestamp, model_name,
                             *(f"{k}_{f'{v:.2g}' if isinstance(v, float) else str(v)}" for k, v in
                               kwargs.items())).replace("\\", "/")
-    return SummaryWriter(log_dir=os.path.join("runs", exp_name).replace("\\", "/")), exp_name
+    os.makedirs(os.path.join("runs", exp_name).replace("\\", "/"), exist_ok=True)
+    # return SummaryWriter(log_dir=os.path.join("runs", exp_name).replace("\\", "/")), exp_name
+    return SummaryWriter(), exp_name
 
 
-
-
-def get_params(freeze_bias, num_classes, num_epochs, batch_sizes, learning_rate, b_scales, w_scales):
+def get_params(freeze_bias, num_classes, num_epochs, batch_sizes, learning_rate, b_scales, w_scales, reinitialize_list):
     params = []
     for fb in freeze_bias:
         for nc in num_classes:
             for ne in num_epochs:
                 for bs in batch_sizes:
                     for lr in learning_rate:
-                        params.append([False, fb, nc, ne, bs, lr, 1, np.sqrt(5)])
+                        params.append([False, fb, nc, ne, bs, lr, 1, np.sqrt(5), None])
                         for b_scale in b_scales:
                             for w_scale in w_scales:
-                                params.append([True, fb, nc, ne, bs, lr, b_scale, w_scale])
+                                for reinitialize in reinitialize_list:
+                                    params.append([True, fb, nc, ne, bs, lr, b_scale, w_scale, reinitialize])
     return params
 
 
@@ -141,24 +147,34 @@ BATCH_SIZE_LIST = [64, 128]
 LR_LIST = [1e-4, 5e-3, 1e-3]
 BIAS_VAR_LIST = [0.1, 1, 5, 10]
 WEIGHT_VAR_LIST = [0.1, np.sqrt(5), 1]
+REINITIALIZE_LIST = [["l1_conv"], ["l2_conv"], ["l3_conv"], ["l4_conv"], ["l5_conv"],
+                     ["l1_batchnorm"], ["l2_batchnorm"], ["l3_batchnorm"], ["l4_batchnorm"], ["l5_batchnorm"],
+                     ["fc.fc"], ["fc1.fc1"], ["fc2.fc2"]]
 
 
 def main():
     params = get_params(FREEZE_BIAS_LIST, NUM_CLASSES_LIST, NUM_EPOCHS_LIST, BATCH_SIZE_LIST, LR_LIST, BIAS_VAR_LIST,
-                        WEIGHT_VAR_LIST)
+                        WEIGHT_VAR_LIST, REINITIALIZE_LIST)
 
     params_df = pd.DataFrame(params,
                              columns=["reinitialize", "freeze_bias", "num_classes", "num_epochs", "batch_size", "lr",
-                                      "b_scale", "w_scale"])
-    os.makedirs("models", exist_ok=True)
-
+                                      "b_scale", "w_scale", "reinitialize_list"])
+    os.makedirs(os.path.join(DIR_PATH, "models"), exist_ok=True)
+    os.makedirs(os.path.join(DIR_PATH, "runs"), exist_ok=True)
+    os.makedirs(os.path.join(DIR_PATH, "data"), exist_ok=True)
+    results = []
     for i, param in params_df.iterrows():
-        end_to_end_model_train(i, param)
+        results.append(end_to_end_model_train(i, param))
+        if len(sys.argv) > 1 and sys.argv[1] == "test":
+            break
+    finalize(results)
 
-@clusterify(chunk_size=1,n_jobs=20,
-            job_script_prologue = ['module load cuda', 'module load py-torch'],
-            memory='16GB',walltime='1:00:00',
-            job_extra_directives=['--gres=gpu:a30:1', '--job-name=alexnet', '--output=~/lab/logs/alexnet-%j.out'])
+
+@clusterify(chunk_size=1, n_jobs=1 if (len(sys.argv) > 1 and sys.argv[1] == "test") else 50,
+            job_script_prologue=['module load cuda/12.4.1', 'module load nvidia'],
+            memory='16GB', walltime='1:00:00',
+            job_extra_directives=['--gres=gpu:a30:1', '--job-name=alexnet',
+                                  '--output=/sci/labs/uvhart/odedwer/logs/alexnet-%j.out'])
 def end_to_end_model_train(i, param):
     device = get_device()
     criterion, model, optimizer, test_loader, train_loader, valid_loader = init_training(device, param)
@@ -171,7 +187,7 @@ def end_to_end_model_train(i, param):
     for epoch in range(param.num_epochs):
         i, loss = train_epoch(criterion, epoch, i, model, optimizer, train_loader, writer)
         print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
-              .format(epoch + 1, NUM_EPOCHS_LIST, i + 1, total_step, loss.item()))
+              .format(epoch + 1, param.num_epochs, i + 1, total_step, loss.item()))
         if epoch % 5 == 0:
             torch.save(model.state_dict(), os.path.join("models", exp_name, f"epoch-{epoch}") + ".pth")
         # Validation
@@ -182,21 +198,21 @@ def end_to_end_model_train(i, param):
     test_model(device, model, test_loader, writer)
     writer.flush()
     writer.close()
+    return None
 
 
 def test_model(device, model, test_loader, writer):
-    with model.eval():
-        with torch.no_grad():
-            correct = 0
-            total = 0
-            for images, labels in test_loader:
-                images = images.to(device)
-                labels = labels.to(device)
-                outputs = model(images)
-                _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-            writer.add_scalar("Accuracy/test", 100 * correct / total, 0)
+    with torch.no_grad():
+        correct = 0
+        total = 0
+        for images, labels in test_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            outputs = model(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+        writer.add_scalar("Accuracy/test", 100 * correct / total, 0)
 
 
 def epoch_validation(criterion, epoch, model, valid_loader, writer):
@@ -208,6 +224,7 @@ def epoch_validation(criterion, epoch, model, valid_loader, writer):
         total = 0
         for images, labels in valid_loader:
             outputs = model(images)
+            # add validation loss to tensorboard
             loss = criterion(outputs, labels)
             writer.add_scalar("Loss/validation", loss, epoch)
             _, predicted = torch.max(outputs.data, 1)
@@ -234,9 +251,10 @@ def train_epoch(criterion, epoch, i, model, optimizer, train_loader, writer):
 
 def init_training(device, param):
     print("initializing training...", end=' ')
-    train_loader, valid_loader = get_train_valid_loader(data_dir='./data', batch_size=param.batch_size,
+    train_loader, valid_loader = get_train_valid_loader(data_dir=os.path.join(DIR_PATH, "data"),
+                                                        batch_size=param.batch_size,
                                                         augment=False, random_seed=42)
-    test_loader = get_test_loader(data_dir='./data', batch_size=param.batch_size)
+    test_loader = get_test_loader(data_dir=os.path.join(DIR_PATH, "data"), batch_size=param.batch_size)
 
     train_loader = DeviceDataLoader(train_loader, device)
     valid_loader = DeviceDataLoader(valid_loader, device)
@@ -244,8 +262,16 @@ def init_training(device, param):
 
     torch.manual_seed(42)
     model = AlexNet(**param.to_dict()).to(device)
-    if param.reinitialize:
+    if param.reinitialize and param.reinitialize_list is None:
         model.reinitialize(seed=42)
+    elif param.reinitialize and param.reinitialize_list:
+        for name in param.reinitialize_list:
+            if "conv" in name:
+                model._reinitialize_conv(model[name])
+            elif "fc" in name:
+                model._reinitialize_fc(model[name])
+            elif "batchnorm" in name:
+                model._reinitialize_batchnorm(model[name])
     torch.manual_seed(42)
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
