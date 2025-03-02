@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.nn import Sequential
 
 
 class DeviceDataLoader:
@@ -28,6 +29,7 @@ class BiasVarianceNetwork(nn.Module):
         self._handles = []
         for key, value in kwargs.items():
             setattr(self, key, value)
+        self.freeze = None
 
     def set_activations_hook(self, activations):
         def hook_generator(name, activations):
@@ -67,12 +69,26 @@ class BiasVarianceNetwork(nn.Module):
         nn.init.normal_(m.bias, 0, self.b_scale)
 
     def _reinitialize_conv(self, m):
-        nn.init.kaiming_normal_(m.weight)
+        nn.init.kaiming_normal_(m.weight, self.w_scale)
         nn.init.normal_(m.bias, 0, self.b_scale)
 
     def _reinitialize_linear(self, m):
-        nn.init.kaiming_normal_(m.weight)
+        nn.init.kaiming_normal_(m.weight, self.w_scale)
         nn.init.normal_(m.bias, 0, self.b_scale)
+
+    def freeze_bias(self):
+        if isinstance(self.freeze, bool) and self.freeze:
+            for n, m in self.named_modules():
+                if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                    m.bias.requires_grad = False
+        elif isinstance(self.freeze, list):
+            for n, m in self.named_modules():
+                try:
+                    name = n.split('.')
+                except Exception:
+                    name = n
+                if name in self.freeze:
+                    m.bias.requires_grad = False
 
 
 # Write alexnet with reinitialization
@@ -156,3 +172,44 @@ class AlexNet(BiasVarianceNetwork):
 
     def get_out_activation(self):
         return self.fc2
+
+
+class SimpleCNN(BiasVarianceNetwork):
+    def __init__(self, name, w_scale, b_scale, n_blocks_increasing=3, n_block_decreasing=1, **kwargs):
+        super(SimpleCNN, self).__init__(w_scale, b_scale)
+        self.name = name
+        self._block_count = 0
+        self._build_network(n_block_decreasing, n_blocks_increasing)
+
+    def _build_network(self, n_block_decreasing, n_blocks_increasing):
+        in_channels, out_channels = 3, 32
+        for i in range(n_blocks_increasing):
+            block = self._get_block(in_channels, out_channels)
+            self._layers.add_module(f"block{self._block_count}", block)
+            in_channels = out_channels
+            out_channels *= 2
+        in_channels = out_channels
+        out_channels //= 2
+        for i in range(n_block_decreasing):
+            block = self._get_block(in_channels, out_channels)
+            setattr(self, f"block{i}", block)
+            in_channels = out_channels
+            out_channels //= 2
+        fc = Sequential()
+        fc.add_module("flatten", nn.Flatten())
+        fc.add_module("fc1", nn.Linear(in_channels, 128))
+        fc.add_module("fc1_relu", nn.ReLU())
+        fc.add_module("fc2", nn.Linear(128, 64))
+        fc.add_module("fc2_relu", nn.ReLU())
+        fc.add_module("fc3", nn.Linear(64, 7))
+        self._layers.add_module("fc", fc)
+        self._layers.add_module("softmax", nn.Softmax(-1))
+
+    def _get_block(self, in_channels, out_channels):
+        self._block_count += 1
+        block = Sequential()
+        block.add_module(f"conv{self._block_count}", nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1))
+        block.add_module(f"activation{self._block_count}", nn.Tanh())
+        block.add_module(f"pool{self._block_count}", nn.MaxPool2d(2, 2))
+        block.add_module(f"dropout{self._block_count}", nn.Dropout(0.25))
+        return block
