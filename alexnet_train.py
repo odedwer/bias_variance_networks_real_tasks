@@ -11,17 +11,14 @@ from torchvision import transforms
 from tqdm import tqdm
 import pandas as pd
 from modules import AlexNet, DeviceDataLoader
-from clusterify import clusterify, finalize
+# from clusterify import clusterify, finalize
 import os
 import sys
-
+from utils import *
 DIR_PATH = R""
 
 
-def get_device():
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print("Using device: " + str(device))
-    return device
+
 
 
 def get_train_valid_loader(data_dir,
@@ -114,14 +111,6 @@ def get_test_loader(data_dir,
     return data_loader
 
 
-def get_summary_writer(model_name, **kwargs):
-    timestamp = str(datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S"))
-    exp_name = os.path.join(timestamp, model_name,
-                            *(f"{k}_{f'{v:.2g}' if isinstance(v, float) else str(v)}" for k, v in
-                              kwargs.items())).replace("\\", "/")
-    os.makedirs(os.path.join("runs", exp_name).replace("\\", "/"), exist_ok=True)
-    # return SummaryWriter(log_dir=os.path.join("runs", exp_name).replace("\\", "/")), exp_name
-    return SummaryWriter(), exp_name
 
 
 def get_params(freeze_bias, num_classes, num_epochs, batch_sizes, learning_rate, b_scales, w_scales, reinitialize_list):
@@ -167,14 +156,14 @@ def main():
         results.append(end_to_end_model_train(i, param))
         if len(sys.argv) > 1 and sys.argv[1] == "test":
             break
-    finalize(results)
+    # finalize(results)
 
 
-@clusterify(chunk_size=1, n_jobs=1 if (len(sys.argv) > 1 and sys.argv[1] == "test") else 50,
-            job_script_prologue=['module load cuda/12.4.1', 'module load nvidia'],
-            memory='16GB', walltime='1:00:00',
-            job_extra_directives=['--gres=gpu:a30:1', '--job-name=alexnet',
-                                  '--output=/sci/labs/uvhart/odedwer/logs/alexnet-%j.out'])
+# @clusterify(chunk_size=1, n_jobs=1 if (len(sys.argv) > 1 and sys.argv[1] == "test") else 50,
+#             job_script_prologue=['module load cuda/12.4.1', 'module load nvidia'],
+#             memory='16GB', walltime='1:00:00',
+#             job_extra_directives=['--gres=gpu:a30:1', '--job-name=alexnet',
+#                                   '--output=/sci/labs/uvhart/odedwer/logs/alexnet-%j.out'])
 def end_to_end_model_train(i, param):
     device = get_device()
     criterion, model, optimizer, test_loader, train_loader, valid_loader = init_training(device, param)
@@ -200,53 +189,6 @@ def end_to_end_model_train(i, param):
     writer.close()
     return None
 
-
-def test_model(device, model, test_loader, writer):
-    with torch.no_grad():
-        correct = 0
-        total = 0
-        for images, labels in test_loader:
-            images = images.to(device)
-            labels = labels.to(device)
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-        writer.add_scalar("Accuracy/test", 100 * correct / total, 0)
-
-
-def epoch_validation(criterion, epoch, model, valid_loader, writer):
-    with torch.no_grad():
-        for name, m in model.named_modules():
-            if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d) or isinstance(m, nn.BatchNorm2d):
-                writer.add_histogram(f"bias/{name}", m.bias, epoch)
-        correct = 0
-        total = 0
-        for images, labels in valid_loader:
-            outputs = model(images)
-            # add validation loss to tensorboard
-            loss = criterion(outputs, labels)
-            writer.add_scalar("Loss/validation", loss, epoch)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-            del images, labels, outputs
-        writer.add_scalar("Accuracy/validation", 100 * correct / total, epoch)
-
-
-def train_epoch(criterion, epoch, i, model, optimizer, train_loader, writer):
-    loss = None
-    for i, (images, labels) in enumerate(train_loader):
-        # Forward pass
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        writer.add_scalar("Loss/train", loss, epoch)
-
-        # Backward and optimize
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-    return i, loss
 
 
 def init_training(device, param):
