@@ -48,7 +48,7 @@ NAME_LIST = ['SimpleCnn']
 NUM_EPOCHS_LIST = [60]
 BATCH_SIZE_LIST = [64]
 LR_LIST = [1e-4, 1e-3]
-B_SCALE_LIST = [0.1,  1, 10]
+B_SCALE_LIST = [0.1, 1, 10]
 W_SCALE_LIST = [1, np.sqrt(2), 5]
 NUM_CLASSES_LIST = [7]
 REINITIALIZE_LIST = [False, True]
@@ -62,7 +62,8 @@ CONV_KWARGS_LIST = [
 ]
 POOL_KWARGS_LIST = [
     {'kernel_size': 2, 'stride': 2},
-    {'kernel_size': 2, 'stride': 1}
+    {'kernel_size': 2, 'stride': 1},
+    {'kernel_size': 2, 'stride': 1, 'padding': 1},
 ]
 N_BLOCKS_INCREASING_LIST = [1, 2, 3]
 N_BLOCKS_DECREASING_LIST = [0]
@@ -76,7 +77,8 @@ for i, comb in enumerate(product(
 )):
     param = pd.Series(
         index=['name', 'num_epochs', 'batch_size', 'lr', 'b_scale', 'w_scale', 'num_classes', 'reinitialize',
-               'freeze_bias', 'conv_kwargs', 'pool_kwargs', 'n_blocks_increasing', 'n_block_decreasing','should_batchnorm'],
+               'freeze_bias', 'conv_kwargs', 'pool_kwargs', 'n_blocks_increasing', 'n_block_decreasing',
+               'should_batchnorm'],
         data=comb
     )
     sampler = torch.utils.data.WeightedRandomSampler(samples_weight, len(samples_weight))
