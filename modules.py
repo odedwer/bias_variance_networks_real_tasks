@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.nn import Sequential
 from torch.utils.data import Dataset, DataLoader
-from torchvision.transforms import v2 as transforms
+from torchvision import transforms
 from torchvision.io import decode_image
 import pandas as pd
 from utils import calculate_conv_width_height
@@ -47,14 +47,12 @@ class FER2013(Dataset):
         for label in self.unique_labels:
             self.images.extend([os.path.join(self.img_dir, label, img) for img in
                                 os.listdir(os.path.join(img_dir, label))])
-            self.transform = transforms.Compose([
-                transforms.ToPILImage(),
-                transforms.Resize((48, 48)),
-                # transforms.RandomHorizontalFlip(p=0.5),
-                transforms.ToTensor(),
-                transforms.ToDtype(torch.float32, scale=True),
-                transforms.Normalize(mean=[0.508], std=[0.212]),
-            ])
+        self.transform = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.Resize((48, 48)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5], std=[0.5]),
+        ])
         self.labels = np.array(self.labels)
 
     def __len__(self):
@@ -279,7 +277,6 @@ class SimpleCNN(BiasVarianceNetwork):
         fc.add_module("fc2", nn.Linear(128, 64))
         fc.add_module("fc2_relu", nn.ReLU())
         fc.add_module("fc3", nn.Linear(64, 7))
-        fc.add_module("fc3_dropout", nn.Dropout(0.5))
         self._layers.add_module("fc", fc)
         self._layers.add_module("softmax", nn.Softmax(-1))
 
@@ -293,7 +290,7 @@ class SimpleCNN(BiasVarianceNetwork):
         #                                              self.conv_params["stride"], self.conv_params["padding"])
         # block.add_module(f"batchnorm{self._block_count}", nn.LayerNorm([out_channels, w_in, h_in]))
         block.add_module(f"batchnorm{self._block_count}", nn.BatchNorm2d(out_channels))
-        block.add_module(f"activation{self._block_count}", nn.ReLU())
+        block.add_module(f"activation{self._block_count}", nn.Tanh())
         block.add_module(f"pool{self._block_count}", nn.MaxPool2d(**self.pool_params))
         block.add_module(f"dropout{self._block_count}", nn.Dropout(0.25))
         return block

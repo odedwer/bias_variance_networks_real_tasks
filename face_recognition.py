@@ -48,8 +48,8 @@ NAME_LIST = ['SimpleCnn']
 NUM_EPOCHS_LIST = [60]
 BATCH_SIZE_LIST = [64]
 LR_LIST = [1e-4, 1e-3]
-B_SCALE_LIST = [0.1, 0.5, 1, 5, 10]
-W_SCALE_LIST = [1, np.sqrt(2), 2.2, 5]
+B_SCALE_LIST = [0.1,  1, 10]
+W_SCALE_LIST = [1, np.sqrt(2), 5]
 NUM_CLASSES_LIST = [7]
 REINITIALIZE_LIST = [False, True]
 FREEZE_BIAS_LIST = [False, True]
@@ -63,7 +63,7 @@ CONV_KWARGS_LIST = [
 POOL_KWARGS_LIST = [
     {'kernel_size': 2, 'stride': 2}
 ]
-N_BLOCKS_INCREASING_LIST = [1, 2, 3, 4]
+N_BLOCKS_INCREASING_LIST = [1, 2, 3]
 N_BLOCKS_DECREASING_LIST = [1, 2]
 
 samples_weight = np.array([class_weights[int(t)] for t in train_dataset.labels[train_split.indices]])
