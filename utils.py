@@ -28,7 +28,7 @@ def make_filename_safe(filename):
 def get_summary_writer(model_name, param):
     timestamp = str(datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S"))
     # save parameters to a file in the experiment directory
-    exp_path = os.path.join("runs", timestamp).replace("\\", "/")
+    exp_path = os.path.join("runs", timestamp + "_" + model_name).replace("\\", "/")
     os.makedirs(exp_path, exist_ok=True)
 
     param.to_csv(os.path.join(exp_path, "params.csv").replace("\\", "/"))
@@ -74,8 +74,8 @@ def plot_confusion_matrix(y_true, y_pred, dataset, writer, epoch, extra_name="")
     df_cm.rename(columns=dataset.number_label_map, index=dataset.number_label_map, inplace=True)
     plt.figure(figsize=(10, 7))
     sns.heatmap(df_cm, annot=True, cbar=False, fmt=".2f", cmap='jet')
-    plt.xlabel("Predicted")
-    plt.ylabel("True")
+    plt.xlabel("True")
+    plt.ylabel("Predicted")
     writer.add_figure(extra_name + "Confusion Matrix", plt.gcf(), epoch)
     plt.close()
 
@@ -157,4 +157,4 @@ def calculate_conv_width_height(width_in, height_in, kernel_size, stride, paddin
             (height_in + 2 * padding - kernel_size) // stride) + 1
     width_out = ((width_out - kernel_size) // 2) + 1
     height_out = ((height_out - kernel_size) // 2) + 1
-    return width_out+1, height_out+1
+    return width_out + 1, height_out + 1
