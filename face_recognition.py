@@ -55,27 +55,28 @@ REINITIALIZE_LIST = [False, True]
 FREEZE_BIAS_LIST = [False, True]
 CONV_KWARGS_LIST = [
     {'kernel_size': 3, 'stride': 1, 'padding': 1},
-    {'kernel_size': 3, 'stride': 2, 'padding': 1},
+    # {'kernel_size': 3, 'stride': 2, 'padding': 1},
     {'kernel_size': 5, 'stride': 1, 'padding': 1},
-    {'kernel_size': 5, 'stride': 2, 'padding': 1},
+    # {'kernel_size': 5, 'stride': 2, 'padding': 1},
     {'kernel_size': 5, 'stride': 2, 'padding': 2},
 ]
 POOL_KWARGS_LIST = [
-    {'kernel_size': 2, 'stride': 2}
+    {'kernel_size': 2, 'stride': 2},
+    {'kernel_size': 2, 'stride': 1}
 ]
 N_BLOCKS_INCREASING_LIST = [1, 2, 3]
-N_BLOCKS_DECREASING_LIST = [1, 2]
-
+N_BLOCKS_DECREASING_LIST = [0]
+SHOULD_BATCH_NORM_LIST = [False, True]
 samples_weight = np.array([class_weights[int(t)] for t in train_dataset.labels[train_split.indices]])
 
 for i, comb in enumerate(product(
         NAME_LIST, NUM_EPOCHS_LIST, BATCH_SIZE_LIST, LR_LIST, B_SCALE_LIST, W_SCALE_LIST, NUM_CLASSES_LIST,
         REINITIALIZE_LIST, FREEZE_BIAS_LIST, CONV_KWARGS_LIST, POOL_KWARGS_LIST, N_BLOCKS_INCREASING_LIST,
-        N_BLOCKS_DECREASING_LIST
+        N_BLOCKS_DECREASING_LIST, SHOULD_BATCH_NORM_LIST
 )):
     param = pd.Series(
         index=['name', 'num_epochs', 'batch_size', 'lr', 'b_scale', 'w_scale', 'num_classes', 'reinitialize',
-               'freeze_bias', 'conv_kwargs', 'pool_kwargs', 'n_blocks_increasing', 'n_block_decreasing'],
+               'freeze_bias', 'conv_kwargs', 'pool_kwargs', 'n_blocks_increasing', 'n_block_decreasing','should_batchnorm'],
         data=comb
     )
     sampler = torch.utils.data.WeightedRandomSampler(samples_weight, len(samples_weight))

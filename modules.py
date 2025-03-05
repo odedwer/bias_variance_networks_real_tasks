@@ -241,7 +241,7 @@ class AlexNet(BiasVarianceNetwork):
 
 class SimpleCNN(BiasVarianceNetwork):
     def __init__(self, name, w_scale, b_scale, n_blocks_increasing=3, n_block_decreasing=1,
-                 conv_params=None, pool_params=None, **kwargs):
+                 conv_params=None, pool_params=None,should_batchnorm=True, **kwargs):
         super(SimpleCNN, self).__init__(w_scale, b_scale)
         if conv_params is None:
             conv_params = {"kernel_size": 3, "padding": 1, "stride": 1}
@@ -252,6 +252,7 @@ class SimpleCNN(BiasVarianceNetwork):
         self.name = name
         self._block_count = 0
         self._layers = Sequential()
+        self.batchnorm = should_batchnorm
         self._build_network(n_block_decreasing, n_blocks_increasing)
 
     def _build_network(self, n_block_decreasing, n_blocks_increasing):
@@ -289,7 +290,8 @@ class SimpleCNN(BiasVarianceNetwork):
         #     w_in, h_in = calculate_conv_width_height(w_in, h_in, self.conv_params["kernel_size"],
         #                                              self.conv_params["stride"], self.conv_params["padding"])
         # block.add_module(f"batchnorm{self._block_count}", nn.LayerNorm([out_channels, w_in, h_in]))
-        block.add_module(f"batchnorm{self._block_count}", nn.BatchNorm2d(out_channels))
+        if self.batchnorm:
+            block.add_module(f"batchnorm{self._block_count}", nn.BatchNorm2d(out_channels))
         block.add_module(f"activation{self._block_count}", nn.Tanh())
         block.add_module(f"pool{self._block_count}", nn.MaxPool2d(**self.pool_params))
         block.add_module(f"dropout{self._block_count}", nn.Dropout(0.25))

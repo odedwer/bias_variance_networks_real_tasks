@@ -139,7 +139,7 @@ def end_to_end_model_train(i, param, model, criterion, optimizer, train_loader, 
         i, loss = train_epoch(criterion, epoch, i, model, optimizer, train_loader, writer)
         print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
               .format(epoch + 1, param.num_epochs, i + 1, total_step, loss.item()))
-        if epoch % 5 == 0:
+        if epoch % 20 == 0:
             torch.save(model.state_dict(), os.path.join("models", exp_name, f"epoch-{epoch}") + ".pth")
         # Validation
         epoch_validation(criterion, epoch, model, valid_loader, writer)
