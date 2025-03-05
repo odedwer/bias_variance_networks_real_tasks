@@ -69,7 +69,7 @@ def train_epoch(criterion, epoch, i, model, optimizer, train_loader, writer):
 def plot_confusion_matrix(y_true, y_pred, dataset, writer, epoch, extra_name=""):
     labels = list(range(len(dataset.unique_labels)))
     cm = confusion_matrix(y_true, y_pred, labels=labels)
-    cm = cm.astype('float') / cm.sum(axis=1, keepdims=True)
+    cm = cm.astype('float') / cm.sum(axis=0, keepdims=True)
     df_cm = pd.DataFrame(cm, index=labels, columns=labels)
     df_cm.rename(columns=dataset.number_label_map, index=dataset.number_label_map, inplace=True)
     plt.figure(figsize=(10, 7))

@@ -237,6 +237,7 @@ for model, name, param in zip(model_list, titles, params):
             scaler.update()
             running_loss += loss.item() * images.size(0)
             writer.add_scalar("Loss/train", loss, epoch)
+            del images, labels, output, loss
         epoch_loss = running_loss / len(train_loader.dataset)
         if epoch % 20 == 0:
             torch.save(model.state_dict(), os.path.join("models", exp_name, f"epoch-{epoch}") + ".pth")
@@ -260,6 +261,7 @@ for model, name, param in zip(model_list, titles, params):
                 correct += (predicted == labels).sum().item()
                 all_preds.extend(labels.cpu().numpy())
                 all_labels.extend(predicted.cpu().numpy())
+                del images, labels
         val_acc = 100.0 * correct / total
         writer.add_scalar("Accuracy/validation", 100 * correct / total, epoch)
         # plot confusion matrix
