@@ -48,6 +48,8 @@ class FER2013Dataset(Dataset):
         return 1 / np.array(self._img_count)
 
 
+
+
 train_transforms = transforms.Compose([
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(10),  # random rotation ±10 degrees
@@ -185,87 +187,100 @@ def get_resnet(bn=True, init_bias=None):
 
 import torch.optim as optim
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-lr = 1e-3
-num_epochs = 50
-bn_list = [False, True]
-init_bias_list = [None, 10.0, 0.0, 0.1]
-model_list = []
-titles = []
-params = []
-for comb in [(bn, init_bias) for bn in bn_list for init_bias in init_bias_list]:
-    torch.manual_seed(42)
-    model_list.append(SimpleCNN(bn=comb[0], init_bias=comb[1]))
-    params.append({"model": "SimpleCNN", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
-    torch.manual_seed(42)
-    # model_list.append(get_vgg(bn=comb[0], init_bias=comb[1]))
-    # params.append({"model": "VGG11", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
-    torch.manual_seed(42)
-    model_list.append(get_resnet(bn=comb[0], init_bias=comb[1]))
-    params.append({"model": "resnet18", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
-    titles.extend([f"SimpleCNN, BN={comb[0]}, Bias={comb[1]}",  # f"VGG, BN={comb[0]}, Bias={comb[1]}",
-                   f"ResNet, BN={comb[0]}, Bias={comb[1]}"])
 
-for model, name, param in zip(model_list, titles, params):
-    # Define optimizer and loss function
-    model = model.to(device)
-    writer, exp_name = get_summary_writer(model.__dict__.get("name", name), pd.Series(param))
-    os.makedirs(os.path.join("models", exp_name), exist_ok=True)
-    # Train the model
-    total_step = len(train_loader)
-    torch.save(model.state_dict(), os.path.join("models", exp_name, f"init") + ".pth")
-    print("\n\n" + "=" * 20)
-    print(f"Training model {name}...")
-    optimizer = optim.Adam(model.parameters(), lr=lr)
-    criterion = nn.CrossEntropyLoss(weight=torch.Tensor(class_weights).to(device))
-    scaler = torch.amp.GradScaler('cuda')
-    for epoch in range(num_epochs):
-        model.train()
-        running_loss = 0.0
-        for images, labels in train_loader:
-            images, labels = images.to(device), labels.to(device)
-            optimizer.zero_grad()
-            # Forward pass
-            with torch.autocast(device_type="cuda"):
-                output = model(images)
-                loss = criterion(output, labels)
-            # outputs = model(images)
-            # loss = criterion(outputs, labels)
-            # Backward and optimize
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-            running_loss += loss.item() * images.size(0)
-            writer.add_scalar("Loss/train", loss, epoch)
-            del images, labels, output, loss
-        epoch_loss = running_loss / len(train_loader.dataset)
-        if epoch % 20 == 0:
-            torch.save(model.state_dict(), os.path.join("models", exp_name, f"epoch-{epoch}") + ".pth")
+def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    lr = 1e-3
+    num_epochs = 50
+    bn_list = [False, True]
+    init_bias_list = [None, 10.0, 0.0, 0.1]
+    model_list, titles, params = get_models(lr, num_epochs, bn_list, init_bias_list)
+    train_models(model_list, titles, params, device, lr, num_epochs)
 
-        # Validation accuracy computation
-        model.eval()
-        for name, m in model.named_modules():
-            if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d) or isinstance(m, nn.BatchNorm2d):
-                if m.bias is not None:
-                    writer.add_histogram(f"bias/{name}", m.bias, epoch)
-        correct = 0
-        total = 0
-        all_preds = []
-        all_labels = []
-        with torch.no_grad():
-            for images, labels in val_loader:
+
+def get_models(lr, num_epochs, bn_list, init_bias_list):
+    model_list = []
+    titles = []
+    params = []
+    for comb in [(bn, init_bias) for bn in bn_list for init_bias in init_bias_list]:
+        torch.manual_seed(42)
+        model_list.append(SimpleCNN(bn=comb[0], init_bias=comb[1]))
+        params.append({"model": "SimpleCNN", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
+        torch.manual_seed(42)
+        # model_list.append(get_vgg(bn=comb[0], init_bias=comb[1]))
+        # params.append({"model": "VGG11", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
+        torch.manual_seed(42)
+        model_list.append(get_resnet(bn=comb[0], init_bias=comb[1]))
+        params.append({"model": "resnet18", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
+        titles.extend([f"SimpleCNN, BN={comb[0]}, Bias={comb[1]}",  # f"VGG, BN={comb[0]}, Bias={comb[1]}",
+                       f"ResNet, BN={comb[0]}, Bias={comb[1]}"])
+    return model_list, titles, params
+
+
+def train_models(model_list, titles, params, device, lr, num_epochs):
+    for model, name, param in zip(model_list, titles, params):
+        # Define optimizer and loss function
+        model = model.to(device)
+        writer, exp_name = get_summary_writer(model.__dict__.get("name", name), pd.Series(param))
+        os.makedirs(os.path.join("models", exp_name), exist_ok=True)
+        # Train the model
+        torch.save(model.state_dict(), os.path.join("models", exp_name, f"init") + ".pth")
+        print("\n\n" + "=" * 20)
+        print(f"Training model {name}...")
+        optimizer = optim.Adam(model.parameters(), lr=lr)
+        criterion = nn.CrossEntropyLoss(weight=torch.Tensor(class_weights).to(device))
+        scaler = torch.amp.GradScaler('cuda')
+        for epoch in range(num_epochs):
+            model.train()
+            running_loss = 0.0
+            for images, labels in train_loader:
                 images, labels = images.to(device), labels.to(device)
-                outputs = model(images)
-                _, predicted = torch.max(outputs, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-                all_preds.extend(labels.cpu().numpy())
-                all_labels.extend(predicted.cpu().numpy())
-                del images, labels
-        val_acc = 100.0 * correct / total
-        writer.add_scalar("Accuracy/validation", 100 * correct / total, epoch)
-        # plot confusion matrix
-        plot_confusion_matrix(all_labels, all_preds, val_loader.dataset.dataset, writer, epoch)
-        print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {epoch_loss:.4f}, Val Acc: {val_acc:.2f}%")
-    torch.save(model.state_dict(), os.path.join("models", exp_name, f"epoch-final") + ".pth")
-    del model
+                optimizer.zero_grad()
+                # Forward pass
+                with torch.autocast(device_type="cuda"):
+                    output = model(images)
+                    loss = criterion(output, labels)
+                # outputs = model(images)
+                # loss = criterion(outputs, labels)
+                # Backward and optimize
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+                running_loss += loss.item() * images.size(0)
+                writer.add_scalar("Loss/train", loss, epoch)
+                del images, labels, output, loss
+            epoch_loss = running_loss / len(train_loader.dataset)
+            if epoch % 20 == 0:
+                torch.save(model.state_dict(), os.path.join("models", exp_name, f"epoch-{epoch}") + ".pth")
+
+            # Validation accuracy computation
+            model.eval()
+            for name, m in model.named_modules():
+                if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d) or isinstance(m, nn.BatchNorm2d):
+                    if m.bias is not None:
+                        writer.add_histogram(f"bias/{name}", m.bias, epoch)
+            correct = 0
+            total = 0
+            all_preds = []
+            all_labels = []
+            with torch.no_grad():
+                for images, labels in val_loader:
+                    images, labels = images.to(device), labels.to(device)
+                    outputs = model(images)
+                    _, predicted = torch.max(outputs, 1)
+                    total += labels.size(0)
+                    correct += (predicted == labels).sum().item()
+                    all_preds.extend(labels.cpu().numpy())
+                    all_labels.extend(predicted.cpu().numpy())
+                    del images, labels
+            val_acc = 100.0 * correct / total
+            writer.add_scalar("Accuracy/validation", 100 * correct / total, epoch)
+            # plot confusion matrix
+            plot_confusion_matrix(all_labels, all_preds, val_loader.dataset.dataset, writer, epoch)
+            print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {epoch_loss:.4f}, Val Acc: {val_acc:.2f}%")
+        torch.save(model.state_dict(), os.path.join("models", exp_name, f"epoch-final") + ".pth")
+        del model
+
+
+if __name__ == '__main__':
+    main()

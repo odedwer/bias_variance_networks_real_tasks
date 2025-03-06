@@ -15,6 +15,7 @@ dependencies = [
     "seaborn>=0.13.2",
     "tensorboard>=2.19.0",
     "torch>=2.6.0",
+    "torch-cka>=0.21",
     "torchvision>=0.21.0",
     "tqdm>=4.67.1",
 ]

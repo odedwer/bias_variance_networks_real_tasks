@@ -26,6 +26,7 @@ dependencies = [
     { name = "seaborn" },
     { name = "tensorboard" },
     { name = "torch" },
+    { name = "torch-cka" },
     { name = "torchvision" },
     { name = "tqdm" },
 ]
@@ -42,6 +43,7 @@ requires-dist = [
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "tensorboard", specifier = ">=2.19.0" },
     { name = "torch", specifier = ">=2.6.0" },
+    { name = "torch-cka", specifier = ">=0.21" },
     { name = "torchvision", specifier = ">=0.21.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
@@ -879,6 +881,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/dd/b0/26f06f9428b250d856f6d512413e9e800b78625f63801cbba13957432036/torch-2.6.0-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:a0d5e1b9874c1a6c25556840ab8920569a7a4137afa8a63a32cee0bc7d89bd4b", size = 95611439 },
     { url = "https://files.pythonhosted.org/packages/c2/9c/fc5224e9770c83faed3a087112d73147cd7c7bfb7557dcf9ad87e1dda163/torch-2.6.0-cp313-cp313-win_amd64.whl", hash = "sha256:510c73251bee9ba02ae1cb6c9d4ee0907b3ce6020e62784e2d7598e0cfa4d6cc", size = 204126475 },
     { url = "https://files.pythonhosted.org/packages/88/8b/d60c0491ab63634763be1537ad488694d316ddc4a20eaadd639cedc53971/torch-2.6.0-cp313-none-macosx_11_0_arm64.whl", hash = "sha256:ff96f4038f8af9f7ec4231710ed4549da1bdebad95923953a25045dcf6fd87e2", size = 66536783 },
+]
+
+[[package]]
+name = "torch-cka"
+version = "0.21"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ae/ea/b62dd14a64aa800ccd4b0b6e5d007a1c4745224b335b8e34fff2180cb0cb/torch_cka-0.21.tar.gz", hash = "sha256:9d84a29932a0eae5c4fe084cac5f4c77de3ddc52ca3d3715dc29f4675f956527", size = 10660 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/86/ed/4aafdbe341e9805f9cadf040facd8e166a319cdba1bd77160e5c265c8085/torch_cka-0.21-py3-none-any.whl", hash = "sha256:b8bf98340a3a9ecd4b51e205011674415e312174372213af92c6873112b1ecbe", size = 8109 },
 ]
 
 [[package]]
