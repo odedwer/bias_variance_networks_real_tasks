@@ -4,4 +4,6 @@ runs/*
 models/*
 figures/*
 data/*
+__pycache__/*
+archive/*
 uv.lock
