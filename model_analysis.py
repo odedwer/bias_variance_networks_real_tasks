@@ -1,3 +1,4 @@
+# %%
 from itertools import combinations, combinations_with_replacement
 
 import pandas as pd
@@ -112,7 +113,7 @@ class ModelAnalysis:
         for i, saliency_map in enumerate(saliency_maps):
             axes[i].imshow(image[0].cpu().detach().numpy(), cmap="gray")
             # calculate smooth
-            c = axes[i].imshow(saliency_map.cpu().detach().numpy(), alpha=0.5, cmap="hot", vmin=0, vmax=1,
+            c = axes[i].imshow(saliency_map.cpu().detach().numpy(), alpha=0.75, cmap="hot", vmin=0, vmax=1,
                                interpolation='bicubic')
 
             axes[i].set_title("Epoch: " + str(self.epochs[i]) + f", Acc:{self.accuracy[i]:.2f}" + ", : " + (
@@ -193,8 +194,28 @@ for model_name in os.listdir("models"):
     print(model_name)
     model_analysis_obj.append(ModelAnalysis(model_name, device))
 # %%
+
 for model in model_analysis_obj:
     model.visualize_filters(show=False, save=True)
+#  %%
+import random
+from collections import defaultdict
+
+def sample_indices_per_class(dataset, n_per_class=3, seed=42):
+    random.seed(seed)
+    class_to_indices = defaultdict(list)
+    for idx, (_, label) in enumerate(dataset):
+        class_to_indices[label].append(idx)
+    sampled_indices = []
+    for indices in class_to_indices.values():
+        sampled_indices.extend(random.sample(indices, min(n_per_class, len(indices))))
+    return sampled_indices
+
+sampled_indices = sample_indices_per_class(model_analysis_obj[0].dataset, n_per_class=4)
+
+for model in model_analysis_obj:
+    for idx in sampled_indices:
+        model.visualize_saliency_map(idx, show=False, save=True)
 # %%
 model_pairs = combinations_with_replacement(range(len(model_analysis_obj)), 2)
 for ma1_idx, ma2_idx in tqdm(list(model_pairs)):
