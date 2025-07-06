@@ -6,15 +6,22 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset, DataLoader, Subset
 from torchvision import transforms
 import os
+#import kagglehub
+
+# Download latest version
+#path = kagglehub.dataset_download("msambare/fer2013")
 
 from ResNet import ResNet
 from utils import get_summary_writer, plot_confusion_matrix
 
 
 class FER2013Dataset(Dataset):
-    def __init__(self, img_dir, transform=None):
+    def __init__(self, img_dir, transform=None, classes=None):
         self.img_dir = img_dir
-        self.unique_labels = os.listdir(img_dir)
+        if not classes:
+            self.unique_labels = os.listdir(img_dir)
+        else:
+            self.unique_labels = classes
         self._img_count = []
         self.label_number_map = {}
         self.number_label_map = {}
@@ -54,7 +61,7 @@ train_transforms = transforms.Compose([
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(10),  # random rotation ±10 degrees
     transforms.RandomCrop(48, padding=4),  # random crop with padding
-    transforms.ToTensor(),
+    transforms.ToTensor(), 
     transforms.Normalize(mean=(0.5,), std=(0.5,))  # normalize to [-1,1] roughly
 ])
 # For validation/test, we usually avoid random transforms, just normalize
@@ -63,7 +70,7 @@ test_transforms = transforms.Compose([
     transforms.Normalize(mean=(0.5,), std=(0.5,))
 ])
 
-train_dataset = FER2013Dataset('data/face-expression/train', transform=train_transforms)
+train_dataset = FER2013Dataset('data/face-expression/train', transform=train_transforms, classes=["fear","sad"])
 train_indices, validation_indices, _, _ = train_test_split(
     list(range(len(train_dataset))), train_dataset.labels,
     stratify=train_dataset.labels,
@@ -72,7 +79,7 @@ train_indices, validation_indices, _, _ = train_test_split(
 train_split = Subset(train_dataset, train_indices)
 val_split = Subset(train_dataset, validation_indices)
 
-test_dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms)
+test_dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=["fear","sad"])
 class_weights = train_dataset.get_class_weights()
 # samples_weight = np.array([class_weights[int(t)] for t in train_dataset.labels[train_split.indices]])
 
@@ -192,8 +199,8 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     lr = 1e-3
     num_epochs = 50
-    bn_list = [False, True]
-    init_bias_list = [None, 10.0, 0.0, 0.1]
+    bn_list = [False]
+    init_bias_list = [None, 10.0, 7.5, 5.0, 2.5, 1.0 ,0.0, 0.5, 0.1]
     model_list, titles, params = get_models(lr, num_epochs, bn_list, init_bias_list)
     train_models(model_list, titles, params, device, lr, num_epochs)
 
@@ -204,7 +211,7 @@ def get_models(lr, num_epochs, bn_list, init_bias_list):
     params = []
     for comb in [(bn, init_bias) for bn in bn_list for init_bias in init_bias_list]:
         torch.manual_seed(42)
-        model_list.append(SimpleCNN(bn=comb[0], init_bias=comb[1]))
+        model_list.append(SimpleCNN(bn=comb[0], init_bias=comb[1], num_classes=2))
         params.append({"model": "SimpleCNN", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
         torch.manual_seed(42)
         # model_list.append(get_vgg(bn=comb[0], init_bias=comb[1]))
