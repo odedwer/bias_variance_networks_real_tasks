@@ -17,7 +17,8 @@ import os
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # We define the path to the model:
-model_path = r'C:\Users\odedw\PycharmProjects\bias_variance_networks_real_tasks\models\06-01-2025_21-00-05\alexnet\reinitialize_True\freeze_bias_False\num_classes_10\num_epochs_30\batch_size_128\lr_0.0005\b_scale_5\w_scale_2.2\epoch-[30].pth'
+
+model_path = r'/home/tomerach/Documents/bias_variance_networks_real_tasks/models/15-05-2025_16-52-51_SimpleCNN, BN=True, Bias=0.1/epoch-final.pth'
 
 # We load the model:
 checkpoint = torch.load(model_path, weights_only=True)

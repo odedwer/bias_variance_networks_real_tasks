@@ -167,7 +167,7 @@ def main():
 def end_to_end_model_train(i, param):
     device = get_device()
     criterion, model, optimizer, test_loader, train_loader, valid_loader = init_training(device, param)
-    writer, exp_name = get_summary_writer("alexnet", **param.to_dict())
+    writer, exp_name = get_summary_writer("alexnet", param) #change
     os.makedirs(os.path.join("models", exp_name), exist_ok=True)
     # Train the model
     total_step = len(train_loader)

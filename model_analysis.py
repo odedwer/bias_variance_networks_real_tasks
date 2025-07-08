@@ -51,7 +51,7 @@ class ModelAnalysis:
             self.models[i] = self.models[i].to(device)
         for model in self.models:
             model.eval()
-        self.dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms)
+        self.dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=["fear","sad"])
         self.dataloader = DataLoader(self.dataset, batch_size=256, shuffle=False, num_workers=4)
         self.device = device
         # calculate accuracy
