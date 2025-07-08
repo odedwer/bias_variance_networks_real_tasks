@@ -97,7 +97,7 @@ import torch.nn.functional as F
 
 
 class SimpleCNN(nn.Module):
-    def __init__(self, num_classes=7, bn=False, init_bias=None):
+    def __init__(self, num_classes=2, bn=False, init_bias=None):
         super(SimpleCNN, self).__init__()
         # Convolutional layers
         self.use_bn = bn
@@ -174,7 +174,7 @@ def get_vgg(bn=True, init_bias=None):
     return vgg_model
 
 
-def get_resnet(bn=True, init_bias=None):
+def get_resnet(bn=True, init_bias=None, num_classes=2):
     # resnet_model = models.resnet18(weights=None)
     # resnet_model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)  # 1-channel input
     # resnet_model.fc = nn.Linear(resnet_model.fc.in_features, 7)
@@ -184,7 +184,7 @@ def get_resnet(bn=True, init_bias=None):
     # if init_bias is not None:
     #     init_module_bias(resnet_model, init_bias)
     # return resnet_model
-    resnet_model = ResNet(bn=bn, bias=init_bias is not None)
+    resnet_model = ResNet(bn=bn, bias=init_bias is not None, num_classes=num_classes)
     if init_bias is not None:
         init_module_bias(resnet_model, init_bias)
     return resnet_model
@@ -217,7 +217,7 @@ def get_models(lr, num_epochs, bn_list, init_bias_list):
         # model_list.append(get_vgg(bn=comb[0], init_bias=comb[1]))
         # params.append({"model": "VGG11", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
         torch.manual_seed(42)
-        model_list.append(get_resnet(bn=comb[0], init_bias=comb[1]))
+        model_list.append(get_resnet(bn=comb[0], init_bias=comb[1], num_classes=2))
         params.append({"model": "resnet18", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
         titles.extend([f"SimpleCNN, BN={comb[0]}, Bias={comb[1]}",  # f"VGG, BN={comb[0]}, Bias={comb[1]}",
                        f"ResNet, BN={comb[0]}, Bias={comb[1]}"])

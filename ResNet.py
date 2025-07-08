@@ -73,7 +73,7 @@ class ResNet(nn.Module):
             img_channels: int=1,
             num_layers: int = 18,
             block: Type[BasicBlock] = BasicBlock,
-            num_classes: int = 7,
+            num_classes: int = 2,
             bias: bool = False,
             bn: bool = True
     ) -> None:
