@@ -25,10 +25,11 @@ def make_filename_safe(filename):
     return safe_filename
 
 
-def get_summary_writer(model_name, param):
+def get_summary_writer(model_name, param, classes=None):
     timestamp = str(datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S"))
     # save parameters to a file in the experiment directory
-    exp_path = os.path.join("runs", timestamp + "_" + model_name).replace("\\", "/")
+    classes_string = "-".join(classes) if classes else ""
+    exp_path = os.path.join("runs", timestamp + "_" + model_name + "_" + classes_string).replace("\\", "/")
     os.makedirs(exp_path, exist_ok=True)
 
     param.to_csv(os.path.join(exp_path, "params.csv").replace("\\", "/"))

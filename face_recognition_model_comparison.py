@@ -70,7 +70,8 @@ test_transforms = transforms.Compose([
     transforms.Normalize(mean=(0.5,), std=(0.5,))
 ])
 
-train_dataset = FER2013Dataset('data/face-expression/train', transform=train_transforms, classes=["fear","sad"])
+classes=["fear","angry"]
+train_dataset = FER2013Dataset('data/face-expression/train', transform=train_transforms, classes=classes)
 train_indices, validation_indices, _, _ = train_test_split(
     list(range(len(train_dataset))), train_dataset.labels,
     stratify=train_dataset.labels,
@@ -79,7 +80,7 @@ train_indices, validation_indices, _, _ = train_test_split(
 train_split = Subset(train_dataset, train_indices)
 val_split = Subset(train_dataset, validation_indices)
 
-test_dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=["fear","sad"])
+test_dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=classes)
 class_weights = train_dataset.get_class_weights()
 # samples_weight = np.array([class_weights[int(t)] for t in train_dataset.labels[train_split.indices]])
 
@@ -200,27 +201,32 @@ def main():
     lr = 1e-3
     num_epochs = 50
     bn_list = [False]
-    init_bias_list = [None, 10.0, 7.5, 5.0, 2.5, 1.0 ,0.0, 0.5, 0.1]
-    model_list, titles, params = get_models(lr, num_epochs, bn_list, init_bias_list)
+    init_bias_list = [None]#, 10.0, 7.5, 5.0, 2.5, 1.0 ,0.0, 0.5, 0.1]
+    model_list, titles, params = get_models(lr, num_epochs, bn_list, init_bias_list, simple=False)
     train_models(model_list, titles, params, device, lr, num_epochs)
 
 
-def get_models(lr, num_epochs, bn_list, init_bias_list):
+def get_models(lr, num_epochs, bn_list, init_bias_list, resnet=True, simple=True
+               ):
     model_list = []
     titles = []
     params = []
     for comb in [(bn, init_bias) for bn in bn_list for init_bias in init_bias_list]:
         torch.manual_seed(42)
-        model_list.append(SimpleCNN(bn=comb[0], init_bias=comb[1], num_classes=2))
-        params.append({"model": "SimpleCNN", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
+        if simple:
+            model_list.append(SimpleCNN(bn=comb[0], init_bias=comb[1], num_classes=2))
+            params.append({"model": "SimpleCNN", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
+            titles.append(f"SimpleCNN, BN={comb[0]}, Bias={comb[1]}")
         torch.manual_seed(42)
         # model_list.append(get_vgg(bn=comb[0], init_bias=comb[1]))
         # params.append({"model": "VGG11", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
         torch.manual_seed(42)
-        model_list.append(get_resnet(bn=comb[0], init_bias=comb[1], num_classes=2))
-        params.append({"model": "resnet18", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
-        titles.extend([f"SimpleCNN, BN={comb[0]}, Bias={comb[1]}",  # f"VGG, BN={comb[0]}, Bias={comb[1]}",
-                       f"ResNet, BN={comb[0]}, Bias={comb[1]}"])
+        if resnet:
+            model_list.append(get_resnet(bn=comb[0], init_bias=comb[1], num_classes=2))
+            params.append({"model": "resnet18", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
+            titles.append(f"ResNet, BN={comb[0]}, Bias={comb[1]}")
+        # titles.extend([f"SimpleCNN, BN={comb[0]}, Bias={comb[1]}",  # f"VGG, BN={comb[0]}, Bias={comb[1]}",
+        #                f"ResNet, BN={comb[0]}, Bias={comb[1]}"])
     return model_list, titles, params
 
 
@@ -228,7 +234,7 @@ def train_models(model_list, titles, params, device, lr, num_epochs):
     for model, name, param in zip(model_list, titles, params):
         # Define optimizer and loss function
         model = model.to(device)
-        writer, exp_name = get_summary_writer(model.__dict__.get("name", name), pd.Series(param))
+        writer, exp_name = get_summary_writer(model.__dict__.get("name", name), pd.Series(param), classes=classes)
         os.makedirs(os.path.join("models", exp_name), exist_ok=True)
         # Train the model
         torch.save(model.state_dict(), os.path.join("models", exp_name, f"init") + ".pth")
