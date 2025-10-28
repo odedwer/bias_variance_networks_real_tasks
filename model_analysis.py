@@ -1,3 +1,6 @@
+from itertools import combinations, combinations_with_replacement
+
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,6 +15,9 @@ from torchvision import transforms
 from PIL import Image
 from torch_cka import CKA
 import os
+
+from tqdm import tqdm
+
 from utils import get_device
 
 from ResNet import ResNet
@@ -19,14 +25,26 @@ from face_recognition_model_comparison import SimpleCNN, test_transforms, FER201
 
 
 class ModelAnalysis:
-    def __init__(self, model_chk_path, device, max_epoch):
+    def __init__(self, model_chk_path, device):
         self.epochs = []
         model_chkpoints = os.listdir(os.path.join("models", model_chk_path))
+        self.params = pd.read_csv(os.path.join("runs", model_chk_path, "params.csv"))
         if "SimpleCNN" in model_chk_path:
-            self.models = [SimpleCNN() for _ in range(len(model_chkpoints))]
+            self.models = [
+                SimpleCNN(bn="BN=True" in model_chk_path, init_bias=0.0 if "Bias=None" not in model_chk_path else None)
+                for _ in range(len(model_chkpoints))]
         elif "ResNet" in model_chk_path:
             self.models = [ResNet(bn="BN=True" in model_chk_path, bias="Bias=None" not in model_chk_path) for _ in
                            range(len(model_chkpoints))]
+        elif "POC" in model_chk_path:
+            params = pd.read_csv(os.path.join("runs", model_chk_path, "params.csv"))
+
+            self.models = [
+                SimpleCNN(num_classes=2,bn=False, init_bias=float(params.iloc[-1,-1]) if params.iloc[-1,-1]!= 'None' else None)
+                for _ in range(len(model_chkpoints))
+            ]
+
+
         # sort by creation date
         model_chkpoints.sort(key=lambda x: os.path.getctime(os.path.join("models", model_chk_path, x)))
 
@@ -46,7 +64,7 @@ class ModelAnalysis:
         self.device = device
         # calculate accuracy
         self.accuracy = []
-        self.model_name = model_chk_path.split("_")[2]
+        self.model_name = model_chk_path.split("_")[2] if "POC" not in model_chk_path else model_chk_path.split("-")[-1][7:]
         for model in self.models:
             correct = 0
             total = 0
@@ -64,7 +82,7 @@ class ModelAnalysis:
     def _norm(x):
         return (x - x.min()) / (x.max() - x.min())
 
-    def visualize_filters(self):
+    def visualize_filters(self, show=True, save=False):
         models = [self.models[0], self.models[-1]]
         fig, axes = plt.subplots(1, 2, figsize=(20, 10))
         for model, ax in zip(models, axes):
@@ -76,9 +94,13 @@ class ModelAnalysis:
                     break
         axes[0].set(title="Initialization")
         axes[1].set(title="After training")
-        plt.show()
+        if save:
+            os.makedirs(os.path.join("figures", "filters"), exist_ok=True)
+            plt.savefig(os.path.join("figures", "filters", f"{self.model_name}_filters.pdf"))
+        if show:
+            plt.show()
 
-    def visualize_saliency_map(self, img_idx):
+    def visualize_saliency_map(self, img_idx, show=True, save=False):
         image, label = self.dataset[img_idx]
         image = image.to(self.device)
         image.requires_grad = True
@@ -94,7 +116,10 @@ class ModelAnalysis:
         n_rows, n_cols = np.sqrt(len(saliency_maps)).astype(int), np.ceil(
             len(saliency_maps) / np.sqrt(len(saliency_maps))).astype(int)
         fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 10))
-        axes = axes.flatten()
+        try:
+            axes = axes.flatten()
+        except AttributeError:
+            axes = [axes]
         # share all heatmap colorbars
         for i, saliency_map in enumerate(saliency_maps):
             axes[i].imshow(image[0].cpu().detach().numpy(), cmap="gray")
@@ -111,23 +136,31 @@ class ModelAnalysis:
             axes[i].axis("off")
         fig.suptitle(f"{self.model_name} Saliency map, img {img_idx}, class {label}")
         fig.tight_layout()
-        plt.show()
+        if save:
+            os.makedirs(os.path.join("figures", "saliency_maps", self.model_name), exist_ok=True)
+            plt.savefig(
+                os.path.join("figures", "saliency_maps", self.model_name, f"{self.model_name}_img_{img_idx}_class_{label}.pdf")
+            )
+        if show:
+            plt.show()
+        else:
+            plt.close('all')
 
     def get_model_layer_names(self, epoch_idx):
         return [l[0] for l in list(self.models[epoch_idx].named_modules()) if l[0] and (
                 "conv" in l[0] or "fc" in l[0] or "relu" in l[0])]
 
 
-def cka_comparison(epoch_idx: int, ma1: ModelAnalysis, ma_layers1: list[str], ma2: ModelAnalysis = None,
-                   ma_layers2: list[str] = None,plot=True):
+def cka_comparison(epoch_idx1: int, ma1: ModelAnalysis, ma_layers1: list[str], epoch_idx2, ma2: ModelAnalysis = None,
+                   ma_layers2: list[str] = None, plot=True, show=False, save=False):
     if ma2 is None:
         ma2 = ma1
     if ma_layers2 is None:
         ma_layers2 = ma_layers1
-    with torch.cuda.amp.autocast(enabled=False):
+    with torch.amp.autocast('cuda', enabled=False):
         cka = CKA(
-            ma1.models[epoch_idx],
-            ma2.models[epoch_idx],
+            ma1.models[epoch_idx1],
+            ma2.models[epoch_idx2],
             model1_name=ma1.model_name,
             model2_name=ma2.model_name,
             model1_layers=ma_layers1,
@@ -140,8 +173,8 @@ def cka_comparison(epoch_idx: int, ma1: ModelAnalysis, ma_layers1: list[str], ma
             pass
         results = cka.export()
     if plot:
-        fig = plt.figure(figsize=(15,15))
-        col = plt.imshow(results['CKA'], vmin=0, vmax=1, cmap="coolwarm", origin="lower", aspect="auto")
+        fig = plt.figure(figsize=(15, 15))
+        col = plt.imshow(results['CKA'], vmin=0, vmax=1, cmap="coolwarm", origin="lower")
         plt.colorbar(col)
         # annotate the heatmap
         for i in range(results['CKA'].shape[0]):
@@ -151,25 +184,47 @@ def cka_comparison(epoch_idx: int, ma1: ModelAnalysis, ma_layers1: list[str], ma
         plt.xticks(range(len(results['model2_layers'])), results['model2_layers'], rotation=90)
         plt.yticks(range(len(results['model1_layers'])), results['model1_layers'])
         plt.title(f"CKA comparison between {ma1.model_name} and {ma2.model_name}", fontsize=18, fontweight="bold")
-        plt.xlabel(ma2.model_name, fontsize=15, fontweight="bold")
-        plt.ylabel(ma1.model_name, fontsize=15, fontweight="bold")
+        plt.xlabel(ma2.model_name+f" epoch {ma2.epochs[epoch_idx2]}", fontsize=15, fontweight="bold")
+        plt.ylabel(ma1.model_name+f" epoch {ma2.epochs[epoch_idx2]}", fontsize=15, fontweight="bold")
         plt.tight_layout()
-        plt.show()
+        os.makedirs(os.path.join("figures", "cka"), exist_ok=True)
+        if save:
+            plt.savefig(
+                os.path.join("figures", "cka",
+                             f"{ma1.model_name}_{ma2.model_name}_epoch1_{ma1.epochs[epoch_idx1]}_epoch2_{ma2.epochs[epoch_idx2]}.pdf")
+            )
+        if show:
+            plt.show()
+        else:
+            plt.close('all')
     return results
 
+if __name__ == '__main__':
 
-# %%
-a = ModelAnalysis("05-03-2025_12-49-22_ResNet, BN=True, Bias=None", get_device(), 60)
+    # %%
+    device = get_device()
+    model_analysis_obj = []
+    for model_name in os.listdir("models"):
+        print(model_name)
+        model_analysis_obj.append(ModelAnalysis(model_name, device))
+    # %%
+    dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms)
+    for i in range(7):
+        choice_idx = np.random.choice(np.where(dataset.labels == i)[0],4,False)
+        for idx in choice_idx:
+            for model in model_analysis_obj:
+                model.visualize_saliency_map(idx, show=False, save=True)
 
-b = ModelAnalysis("05-03-2025_12-23-08_ResNet, BN=False, Bias=None", get_device(), 60)
+    for model in model_analysis_obj:
+        model.visualize_filters(show=False, save=True)
 
-c = ModelAnalysis("05-03-2025_12-29-19_ResNet, BN=False, Bias=10.0", get_device(), 60)
-# %%
-a.visualize_saliency_map(400)
-b.visualize_saliency_map(400)
-c.visualize_saliency_map(400)
-# %%
-epoch_idx=-1
-results = cka_comparison(epoch_idx, b, b.get_model_layer_names(epoch_idx), c,c.get_model_layer_names(epoch_idx))
-# %%
-
+    # %%
+    model_pairs = combinations_with_replacement(range(len(model_analysis_obj)), 2)
+    for ma1_idx, ma2_idx in tqdm(list(model_pairs)):
+        ma1 = model_analysis_obj[ma1_idx]
+        ma2 = model_analysis_obj[ma2_idx]
+        for epoch_idx1 in range(len(ma1.models)):
+            for epoch_idx2 in range(len(ma2.models)):
+                results = cka_comparison(epoch_idx1, ma1, ma1.get_model_layer_names(epoch_idx1), epoch_idx2,
+                                         ma2, ma2.get_model_layer_names(epoch_idx2),
+                                         show=False, save=True)
