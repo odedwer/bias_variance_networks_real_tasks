@@ -11,8 +11,8 @@ def run_analysis():
     # !!! IMPORTANT !!!
     # UPDATE bdthese paths with the timestamped folder names created by poc_bias_variance.py
     # Look inside your 'runs' or 'models' directory for folders starting with "POC_"
-    LOW_VAR_EXP_DIR = "25-10-2025_07-48-57_POC_Low_Variance_Bias"
-    HIGH_VAR_EXP_DIR = "25-10-2025_07-49-54_POC_High_Variance_Bias"
+    LOW_VAR_EXP_DIR = "28-10-2025_12-52-37_POC_Low_Variance_Bias_seed2"
+    HIGH_VAR_EXP_DIR = "28-10-2025_12-56-07_POC_High_Variance_Bias_seed2"
 
     device = get_device()
 
@@ -45,7 +45,7 @@ def run_analysis():
         'conv2-fc1':[],
         'fc1-fc2':[]
     }
-    for epoch in tqdm(len(ma_low_var.models)):
+    for epoch in tqdm(range(len(ma_low_var.models))):
         res_low = cka_comparison(
             epoch_idx1=epoch,
             ma1=ma_low_var,
@@ -64,14 +64,14 @@ def run_analysis():
             show=False,
             save=True
         )
-
+        print(res_low)
         # save cka results for specific layer pairs
-        cka_over_epochs_low['conv1-conv2'].append(res_low.loc['conv1', 'conv2'])
-        cka_over_epochs_low['conv2-fc1'].append(res_low.loc['conv2', 'fc1'])
-        cka_over_epochs_low['fc1-fc2'].append(res_low.loc['fc1', 'fc2'])
-        cka_over_epochs_high['conv1-conv2'].append(res_high.loc['conv1', 'conv2'])
-        cka_over_epochs_high['conv2-fc1'].append(res_high.loc['conv2', 'fc1'])
-        cka_over_epochs_high['fc1-fc2'].append(res_high.loc['fc1', 'fc2'])
+        cka_over_epochs_low['conv1-conv2'].append(res_low['CKA'][0,1])
+        cka_over_epochs_low['conv2-fc1'].append(res_low['CKA'][1,2])
+        cka_over_epochs_low['fc1-fc2'].append(res_low['CKA'][2,3])
+        cka_over_epochs_high['conv1-conv2'].append(res_high['CKA'][0,1])
+        cka_over_epochs_high['conv2-fc1'].append(res_high['CKA'][1,2])
+        cka_over_epochs_high['fc1-fc2'].append(res_high['CKA'][2,3])
         plt.close('all')
     # Plot CKA over epochs for both models
     epochs = list(range(1, len(ma_low_var.models) + 1))
@@ -85,6 +85,7 @@ def run_analysis():
     plt.legend()
     os.makedirs("figures/cka_over_epochs", exist_ok=True)
     plt.savefig("figures/cka_over_epochs/cka_over_epochs_comparison.pdf")
+    plt.close('all')
 
 
 

@@ -94,7 +94,7 @@ def run_training_poc(name, init_bias=None):
         device)
 
     lr = 1e-3
-    num_epochs = 200
+    num_epochs = 100
 
     # --- 3. Training Loop ---
     print("\n" + "=" * 20)
