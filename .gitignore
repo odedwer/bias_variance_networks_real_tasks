@@ -2,4 +2,6 @@
 .idea/*
 runs/*
 models/*
+figures/*
 data/*
+uv.lock
