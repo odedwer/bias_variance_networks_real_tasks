@@ -1,20 +1,21 @@
-import multiprocessing
+import gc
 import os
+
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-import pandas as pd
 from PIL import Image
+from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset, DataLoader, Subset
 from torchvision import transforms
-from sklearn.model_selection import train_test_split
 
 # Assuming your original files are in the same directory
 from face_recognition_model_comparison import SimpleCNN
 from modules import DeviceDataLoader
 from utils import get_summary_writer
-import gc
+
 
 class FER2013BinaryDataset(Dataset):
     """A modified dataset class to only load 'happy' and 'sad' classes."""
@@ -99,35 +100,45 @@ def run_training_poc(name, init_bias=None):
     print("\n" + "=" * 20)
     print(f"STARTING EXPERIMENT: {name}")
     print("=" * 20)
+    for i, seed in enumerate([42, 3, 97]):
+        torch.manual_seed(seed)
+        model = SimpleCNN(num_classes=2, bn=False, init_bias=init_bias).to(device)
 
-    torch.manual_seed(42)
-    model = SimpleCNN(num_classes=2, bn=False, init_bias=init_bias).to(device)
+        param_series = pd.Series({"model": "SimpleCNN_Binary", "bn": True, "init_bias": init_bias})
+        writer, log_dir_name = get_summary_writer(f"POC_{name}_seed{i + 1}", param_series)
+        os.makedirs(os.path.join("models", log_dir_name), exist_ok=True)
 
-    param_series = pd.Series({"model": "SimpleCNN_Binary", "bn": True, "init_bias": init_bias})
-    writer, log_dir_name = get_summary_writer(f"POC_{name}", param_series)
-    os.makedirs(os.path.join("models", log_dir_name), exist_ok=True)
-
-    optimizer = optim.AdamW(model.parameters(), lr=lr)
-    criterion = nn.CrossEntropyLoss()
-    # --- Add GradScaler ---
-    scaler = torch.amp.GradScaler('cuda')
-    # save the initial model
-    init_model_path = os.path.join("models", log_dir_name, "epoch-0.pth")
-    torch.save(model.state_dict(), init_model_path)
-    for epoch in range(num_epochs):
-        model.train()
-        for images, labels in train_loader:
-            # images, labels = images.to(device), labels.to(device)
-            optimizer.zero_grad()
-
-            # --- Use autocast ---
-            with torch.amp.autocast('cuda'):
+        optimizer = optim.AdamW(model.parameters(), lr=lr)
+        criterion = nn.CrossEntropyLoss()
+        # --- Add GradScaler ---
+        scaler = torch.amp.GradScaler('cuda')
+        # save the initial model
+        init_model_path = os.path.join("models", log_dir_name, "epoch-0.pth")
+        torch.save(model.state_dict(), init_model_path)
+        model.eval()
+        correct, total = 0, 0
+        with torch.no_grad():
+            for images, labels in val_loader:
+                images, labels = images.to(device), labels.to(device)
                 outputs = model(images)
-                loss = criterion(outputs, labels)
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-        if epoch == 0 or (epoch + 1) % 5 == 0 or epoch == num_epochs - 1:
+                _, predicted = torch.max(outputs, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+        val_acc = 100.0 * correct / total
+        writer.add_scalar("Accuracy/validation", val_acc, 0)
+        for epoch in range(num_epochs):
+            model.train()
+            for images, labels in train_loader:
+                # images, labels = images.to(device), labels.to(device)
+                optimizer.zero_grad()
+
+                # --- Use autocast ---
+                with torch.amp.autocast('cuda'):
+                    outputs = model(images)
+                    loss = criterion(outputs, labels)
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
             model.eval()
             correct, total = 0, 0
             with torch.no_grad():
@@ -138,43 +149,41 @@ def run_training_poc(name, init_bias=None):
                     total += labels.size(0)
                     correct += (predicted == labels).sum().item()
             val_acc = 100.0 * correct / total
-            writer.add_scalar("Accuracy/validation", val_acc, epoch)
-            # save the model every 5 epochs
-            if (epoch + 1) % 5 == 0 or epoch == num_epochs - 1:
-                model_path = os.path.join("models", log_dir_name, f"epoch-{epoch + 1}.pth")
-                torch.save(model.state_dict(), model_path)
+            writer.add_scalar("Accuracy/validation", val_acc, epoch + 1)
+            model_path = os.path.join("models", log_dir_name, f"epoch-{epoch + 1}.pth")
+            torch.save(model.state_dict(), model_path)
             print(f"Epoch {epoch + 1}/{num_epochs}, Val Acc: {val_acc:.2f}%")
 
-    final_model_path = os.path.join("models", log_dir_name, "epoch-final.pth")
-    torch.save(model.state_dict(), final_model_path)
-    print(f"Finished training {name}. Final model saved.")
+        final_model_path = os.path.join("models", log_dir_name, "epoch-final.pth")
+        torch.save(model.state_dict(), final_model_path)
+        print(f"Finished training {name}. Final model saved.")
 
-    # --- 4. Test Evaluation (ADDED) ---
-    print(f"--- Evaluating {name} on the test set ---")
-    model.load_state_dict(torch.load(final_model_path))
-    model.eval()
+        # --- 4. Test Evaluation (ADDED) ---
+        print(f"--- Evaluating {name} on the test set ---")
+        model.load_state_dict(torch.load(final_model_path))
+        model.eval()
 
-    correct, total = 0, 0
-    with torch.no_grad():
-        for images, labels in test_loader:
-            images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
-            _, predicted = torch.max(outputs, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+        correct, total = 0, 0
+        with torch.no_grad():
+            for images, labels in test_loader:
+                images, labels = images.to(device), labels.to(device)
+                outputs = model(images)
+                _, predicted = torch.max(outputs, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
 
-    test_acc = 100.0 * correct / total
-    writer.add_scalar("Accuracy/test", test_acc, 0)
-    print(f"✅ Final Test Accuracy for {name}: {test_acc:.2f}%")
+        test_acc = 100.0 * correct / total
+        writer.add_scalar("Accuracy/test", test_acc, 0)
+        print(f"✅ Final Test Accuracy for {name}: {test_acc:.2f}%")
 
-    writer.close()
+        writer.close()
 
 
 def run_exp_loop():
     # --- 2. Experiment Configurations ---
     experiments = {
         # "No_Variance_Bias": {"init_bias": 0.0},
-        # "Low_Variance_Bias": {"init_bias": .1},
+        "Low_Variance_Bias": {"init_bias": .1},
         # "Low2_Variance_Bias": {"init_bias": 1.0},
         # "High1_Variance_Bias": {"init_bias": 5.0},
         "High_Variance_Bias": {"init_bias": 10.0}
@@ -186,7 +195,6 @@ def run_exp_loop():
         torch.cuda.empty_cache()
 
         gc.collect()
-
 
     print("\n✅ All experiments have finished.")
 

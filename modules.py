@@ -239,6 +239,9 @@ class AlexNet(BiasVarianceNetwork):
         return self.fc2
 
 
+#%%
+
+
 class SimpleCNN(BiasVarianceNetwork):
     def __init__(self, name, w_scale, b_scale, n_blocks_increasing=3, n_block_decreasing=1,
                  conv_params=None, pool_params=None,should_batchnorm=True, **kwargs):
