@@ -84,13 +84,13 @@ def run_training_poc(name, init_bias=None):
     val_split = Subset(full_train_dataset, val_indices)
 
     train_loader = DeviceDataLoader(
-        DataLoader(train_split, batch_size=64, shuffle=True, num_workers=8, pin_memory=True, persistent_workers=True),
+        DataLoader(train_split, batch_size=64, shuffle=True, num_workers=6, pin_memory=True, persistent_workers=True),
         device)
     val_loader = DeviceDataLoader(
-        DataLoader(val_split, batch_size=64, shuffle=False, num_workers=8, pin_memory=True, persistent_workers=True),
+        DataLoader(val_split, batch_size=64, shuffle=False, num_workers=6, pin_memory=True, persistent_workers=True),
         device)
     test_loader = DeviceDataLoader(
-        DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=8, pin_memory=True, persistent_workers=True),
+        DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=6, pin_memory=True, persistent_workers=True),
         device)
 
     lr = 1e-3
