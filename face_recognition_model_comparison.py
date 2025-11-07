@@ -201,9 +201,9 @@ def main():
     lr = 1e-3
     num_epochs = 50
     bn_list = [False]
-    init_bias_list = [10.0, 5.0, 1.0, 0.5, 0.1]#[None, 0.0]#,
+    init_bias_list = [None, 0.0]#,[10.0, 5.0, 1.0, 0.5, 0.1]#
     seeds = [0,1,143,98]
-    model_list, titles, params = get_models(lr, num_epochs, bn_list, init_bias_list,seeds=seeds)
+    model_list, titles, params = get_models(lr, num_epochs, bn_list, init_bias_list)
     train_models(model_list, titles, params, device, lr, num_epochs)
 
 
@@ -213,6 +213,7 @@ def get_models(lr, num_epochs, bn_list, init_bias_list, seeds=[42], resnet=True,
     titles = []
     params = []
     for comb in [(bn, init_bias, seed) for bn in bn_list for init_bias in init_bias_list for seed in seeds]:
+        #TODO add to cuda seed setting
         torch.manual_seed(comb[2])
         if simple:
             model_list.append(SimpleCNN(bn=comb[0], init_bias=comb[1], num_classes=2))
@@ -220,8 +221,8 @@ def get_models(lr, num_epochs, bn_list, init_bias_list, seeds=[42], resnet=True,
             titles.append(f"SimpleCNN, BN={comb[0]}, Bias={comb[1]}, seed={comb[2]}")
         #torch.manual_seed(42)
         # model_list.append(get_vgg(bn=comb[0], init_bias=comb[1]))
-        # params.append({"model": "VGG11", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
-        torch.manual_seed(comb[2])
+        # params.append({"model": "VGG11" , "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
+        torch.manual_seed(comb[2]) #TODO add to cuda seed setting
         if resnet:
             model_list.append(get_resnet(bn=comb[0], init_bias=comb[1], num_classes=2))
             params.append({"model": "resnet18", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
