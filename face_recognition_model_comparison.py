@@ -151,7 +151,7 @@ def remove_bn(module):
 
 
 def init_module_bias(module, init_bias=0.0):
-    for name, child in module.named_modules():
+    for name, child in module.named_children():
         if isinstance(child, nn.Conv2d) or isinstance(child, nn.Linear) or isinstance(child, nn.BatchNorm2d):
             if child.bias is not None:
                 if init_bias == 0.0:
@@ -215,6 +215,7 @@ def get_models(lr, num_epochs, bn_list, init_bias_list, seeds=[42], resnet=True,
     for comb in [(bn, init_bias, seed) for bn in bn_list for init_bias in init_bias_list for seed in seeds]:
         #TODO add to cuda seed setting
         torch.manual_seed(comb[2])
+        torch.cuda.manual_seed_all(comb[2])
         if simple:
             model_list.append(SimpleCNN(bn=comb[0], init_bias=comb[1], num_classes=2))
             params.append({"model": "SimpleCNN", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
@@ -222,11 +223,12 @@ def get_models(lr, num_epochs, bn_list, init_bias_list, seeds=[42], resnet=True,
         #torch.manual_seed(42)
         # model_list.append(get_vgg(bn=comb[0], init_bias=comb[1]))
         # params.append({"model": "VGG11" , "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
-        torch.manual_seed(comb[2]) #TODO add to cuda seed setting
+        torch.manual_seed(comb[2])
+        torch.cuda.manual_seed_all(comb[2])
         if resnet:
             model_list.append(get_resnet(bn=comb[0], init_bias=comb[1], num_classes=2))
             params.append({"model": "resnet18", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
-            titles.append(f"ResNet, BN={comb[0]}, Bias={comb[1]}, seed={comb[2]}")
+            titles.append(f"ResNet, BN={comb[0]}, Bias={comb[1]}, seed={comb[2]}, cuda_seed")
         # titles.extend([f"SimpleCNN, BN={comb[0]}, Bias={comb[1]}",  # f"VGG, BN={comb[0]}, Bias={comb[1]}",
         #                f"ResNet, BN={comb[0]}, Bias={comb[1]}"])
     return model_list, titles, params
