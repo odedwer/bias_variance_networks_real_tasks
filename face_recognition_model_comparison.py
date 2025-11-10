@@ -151,7 +151,7 @@ def remove_bn(module):
 
 
 def init_module_bias(module, init_bias=0.0):
-    for name, child in module.named_children():
+    for name, child in module.named_modules():
         if isinstance(child, nn.Conv2d) or isinstance(child, nn.Linear) or isinstance(child, nn.BatchNorm2d):
             if child.bias is not None:
                 if init_bias == 0.0:
@@ -199,11 +199,11 @@ import torch.optim as optim
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     lr = 1e-3
-    num_epochs = 50
+    num_epochs = 70
     bn_list = [False]
-    init_bias_list = [None, 0.0]#,[10.0, 5.0, 1.0, 0.5, 0.1]#
-    seeds = [0,1,143,98]
-    model_list, titles, params = get_models(lr, num_epochs, bn_list, init_bias_list)
+    init_bias_list = [1.0, 10.0]#[None, 0.0]#,[10.0, 5.0, 1.0, 0.5, 0.1]#
+    seeds = [0,1,143,98, 42, 11]
+    model_list, titles, params = get_models(lr, num_epochs, bn_list, init_bias_list, seeds=seeds, resnet=True, simple=True)
     train_models(model_list, titles, params, device, lr, num_epochs)
 
 
