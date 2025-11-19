@@ -24,11 +24,12 @@ from utils import get_device
 from ResNet import ResNet
 from face_recognition_model_comparison import SimpleCNN, test_transforms, FER2013Dataset
 
+MODELS_FOLDER_PATH = "models/models_for_analysis"
 
 class ModelAnalysis:
     def __init__(self, model_chk_path, device):
         self.epochs = []
-        model_chkpoints = os.listdir(os.path.join("models", model_chk_path))
+        model_chkpoints = os.listdir(os.path.join(MODELS_FOLDER_PATH, model_chk_path))
         self.params = pd.read_csv(os.path.join("runs", model_chk_path, "params.csv"))
         if "SimpleCNN" in model_chk_path:
             self.models = [
@@ -38,7 +39,7 @@ class ModelAnalysis:
             self.models = [ResNet(bn="BN=True" in model_chk_path, bias="Bias=None" not in model_chk_path) for _ in
                            range(len(model_chkpoints))]
         # sort by creation date
-        model_chkpoints.sort(key=lambda x: os.path.getctime(os.path.join("models", model_chk_path, x)))
+        model_chkpoints.sort(key=lambda x: os.path.getctime(os.path.join(MODELS_FOLDER_PATH, model_chk_path, x)))
 
         for i, filename in enumerate(model_chkpoints):
             if i == 0:
@@ -47,7 +48,7 @@ class ModelAnalysis:
                 self.epochs.append("after training")
             else:
                 self.epochs.append(int(filename.split("-")[1].split(".")[0]))
-            self.models[i].load_state_dict(torch.load(os.path.join("models", model_chk_path, filename)))
+            self.models[i].load_state_dict(torch.load(os.path.join(MODELS_FOLDER_PATH, model_chk_path, filename)))
             self.models[i] = self.models[i].to(device)
         for model in self.models:
             model.eval()
@@ -190,7 +191,7 @@ def cka_comparison(epoch_idx1: int, ma1: ModelAnalysis, ma_layers1: list[str], e
 # %%
 device = get_device()
 model_analysis_obj = []
-for model_name in os.listdir("models"):
+for model_name in os.listdir(MODELS_FOLDER_PATH):
     print(model_name)
     model_analysis_obj.append(ModelAnalysis(model_name, device))
 # %%
