@@ -76,6 +76,7 @@ train_indices, validation_indices, _, _ = train_test_split(
     list(range(len(train_dataset))), train_dataset.labels,
     stratify=train_dataset.labels,
     test_size=0.2,
+    random_state=42
 )
 train_split = Subset(train_dataset, train_indices)
 val_split = Subset(train_dataset, validation_indices)
@@ -201,10 +202,23 @@ def main():
     lr = 1e-3
     num_epochs = 70
     bn_list = [False]
-    init_bias_list = [1.0, 10.0]#[None, 0.0]#,[10.0, 5.0, 1.0, 0.5, 0.1]#
-    seeds = [0,1,143,98, 42, 11]
+    init_bias_list = [1.0, 10.0, None, 0.0]#,[10.0, 5.0, 1.0, 0.5, 0.1]#
+    seeds = [0, 1, 143, 98, 42, 11,
+             7, 13, 21, 27, 31, 37, 43, 49, 53, 59,
+             61, 67, 71, 73, 79, 83, 89, 97, 101, 103,
+             107, 109, 113, 127]
     model_list, titles, params = get_models(lr, num_epochs, bn_list, init_bias_list, seeds=seeds, resnet=True, simple=True)
     train_models(model_list, titles, params, device, lr, num_epochs)
+
+def set_deterministic(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    import random
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.use_deterministic_algorithms(True, warn_only=True)
 
 
 def get_models(lr, num_epochs, bn_list, init_bias_list, seeds=[42], resnet=True, simple=True
@@ -213,19 +227,16 @@ def get_models(lr, num_epochs, bn_list, init_bias_list, seeds=[42], resnet=True,
     titles = []
     params = []
     for comb in [(bn, init_bias, seed) for bn in bn_list for init_bias in init_bias_list for seed in seeds]:
-        #TODO add to cuda seed setting
-        torch.manual_seed(comb[2])
-        torch.cuda.manual_seed_all(comb[2])
         if simple:
+            set_deterministic(comb[2])
             model_list.append(SimpleCNN(bn=comb[0], init_bias=comb[1], num_classes=2))
             params.append({"model": "SimpleCNN", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
             titles.append(f"SimpleCNN, BN={comb[0]}, Bias={comb[1]}, seed={comb[2]}")
         #torch.manual_seed(42)
         # model_list.append(get_vgg(bn=comb[0], init_bias=comb[1]))
         # params.append({"model": "VGG11" , "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
-        torch.manual_seed(comb[2])
-        torch.cuda.manual_seed_all(comb[2])
         if resnet:
+            set_deterministic(comb[2])
             model_list.append(get_resnet(bn=comb[0], init_bias=comb[1], num_classes=2))
             params.append({"model": "resnet18", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
             titles.append(f"ResNet, BN={comb[0]}, Bias={comb[1]}, seed={comb[2]}, cuda_seed")
