@@ -89,7 +89,7 @@ class ModelAnalysis:
         axes[1].set(title="After training")
         if save:
             os.makedirs(os.path.join("figures", "filters"), exist_ok=True)
-            plt.savefig(os.path.join("figures", "filters", f"{self.model_name}_filters.pdf"))
+            plt.savefig(os.path.join("figures", "filters", f"{self.model_name}_filters.jpg"))
         if show:
             plt.show()
 
