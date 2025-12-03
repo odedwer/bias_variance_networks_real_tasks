@@ -25,42 +25,51 @@ from ResNet import ResNet
 from face_recognition_model_comparison import SimpleCNN, test_transforms, FER2013Dataset
 
 MODELS_FOLDER_PATH = "models/models_for_analysis"
+classes=["fear","angry"]
 
 class ModelAnalysis:
+    """
+    a model after training different epochs
+    """
     def __init__(self, model_chk_path, device):
-        self.epochs = []
+        self.epochs_names = []
         model_chkpoints = os.listdir(os.path.join(MODELS_FOLDER_PATH, model_chk_path))
         self.params = pd.read_csv(os.path.join("runs", model_chk_path, "params.csv"))
+        #create appropriate model instances
         if "SimpleCNN" in model_chk_path:
-            self.models = [
+            self.epochs = [
                 SimpleCNN(bn="BN=True" in model_chk_path, init_bias=0.0 if "Bias=None" not in model_chk_path else None)
                 for _ in range(len(model_chkpoints))]
         elif "ResNet" in model_chk_path:
-            self.models = [ResNet(bn="BN=True" in model_chk_path, bias="Bias=None" not in model_chk_path) for _ in
+            self.epochs = [ResNet(bn="BN=True" in model_chk_path, bias="Bias=None" not in model_chk_path) for _ in
                            range(len(model_chkpoints))]
-        # sort by creation date
+        # sort by creation date - all of the model's checkpoints
         model_chkpoints.sort(key=lambda x: os.path.getctime(os.path.join(MODELS_FOLDER_PATH, model_chk_path, x)))
 
         for i, filename in enumerate(model_chkpoints):
             if i == 0:
-                self.epochs.append("Init")
+                self.epochs_names.append("Init")
             elif "final" in filename:
-                self.epochs.append("after training")
+                self.epochs_names.append("after training")
             else:
-                self.epochs.append(int(filename.split("-")[1].split(".")[0]))
-            self.models[i].load_state_dict(torch.load(os.path.join(MODELS_FOLDER_PATH, model_chk_path, filename)))
-            self.models[i] = self.models[i].to(device)
-        for model in self.models:
+                self.epochs_names.append(int(filename.split("-")[1].split(".")[0]))
+            # load model parameters into the created model instances
+            self.epochs[i].load_state_dict(torch.load(os.path.join(MODELS_FOLDER_PATH, model_chk_path, filename)))
+            self.epochs[i] = self.epochs[i].to(device)
+        #set models to evaluation mode
+        for model in self.epochs:
             model.eval()
-        self.dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=["fear","sad"])
+
+        self.dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=classes)
         self.dataloader = DataLoader(self.dataset, batch_size=256, shuffle=False, num_workers=4)
         self.device = device
         # calculate accuracy
         self.accuracy = []
         self.model_name = model_chk_path.split("_")[2]
-        for model in self.models:
+        for model in self.epochs:
             correct = 0
             total = 0
+            #TODO continue here
             with torch.no_grad():
                 for images, labels in self.dataloader:
                     images = images.to(self.device)
@@ -76,7 +85,7 @@ class ModelAnalysis:
         return (x - x.min()) / (x.max() - x.min())
 
     def visualize_filters(self, show=True, save=False):
-        models = [self.models[0], self.models[-1]]
+        models = [self.epochs[0], self.epochs[-1]]
         fig, axes = plt.subplots(1, 2, figsize=(20, 10))
         for model, ax in zip(models, axes):
             for name, param in model.named_parameters():
@@ -97,9 +106,9 @@ class ModelAnalysis:
         image, label = self.dataset[img_idx]
         image = image.to(self.device)
         image.requires_grad = True
-        label = self.dataset.number_label_map[label]
+        label = self.dataset.number_label_map[label] #the true label
         saliency_maps = []
-        for model in self.models:
+        for model in self.epochs:
             model.zero_grad()
             image.requires_grad = True
             output = model(image[None, ...].to(self.device))
@@ -117,8 +126,8 @@ class ModelAnalysis:
             c = axes[i].imshow(saliency_map.cpu().detach().numpy(), alpha=0.75, cmap="hot", vmin=0, vmax=1,
                                interpolation='bicubic')
 
-            axes[i].set_title("Epoch: " + str(self.epochs[i]) + f", Acc:{self.accuracy[i]:.2f}" + ", : " + (
-                self.dataset.number_label_map[output.argmax().item()]))
+            axes[i].set_title("Epoch: " + str(self.epochs_names[i]) + f", Acc:{self.accuracy[i]:.2f}" + ", : " + (
+                self.dataset.number_label_map[output.argmax().item()])) #the predicted label
             fig.colorbar(c, ax=axes[i], orientation="horizontal")
             # remove axis
 
@@ -135,7 +144,7 @@ class ModelAnalysis:
             plt.show()
 
     def get_model_layer_names(self, epoch_idx):
-        return [l[0] for l in list(self.models[epoch_idx].named_modules()) if l[0] and (
+        return [l[0] for l in list(self.epochs[epoch_idx].named_modules()) if l[0] and (
                 "conv" in l[0] or "fc" in l[0] or "relu" in l[0])]
 
 
@@ -147,8 +156,8 @@ def cka_comparison(epoch_idx1: int, ma1: ModelAnalysis, ma_layers1: list[str], e
         ma_layers2 = ma_layers1
     with torch.amp.autocast('cuda', enabled=False):
         cka = CKA(
-            ma1.models[epoch_idx1],
-            ma2.models[epoch_idx2],
+            ma1.epochs[epoch_idx1],
+            ma2.epochs[epoch_idx2],
             model1_name=ma1.model_name,
             model2_name=ma2.model_name,
             model1_layers=ma_layers1,
@@ -179,7 +188,7 @@ def cka_comparison(epoch_idx1: int, ma1: ModelAnalysis, ma_layers1: list[str], e
         if save:
             plt.savefig(
                 os.path.join("figures", "cka",
-                             f"{ma1.model_name}_{ma2.model_name}_epoch1_{ma1.epochs[epoch_idx1]}_epoch2_{ma2.epochs[epoch_idx2]}.pdf")
+                             f"{ma1.model_name}_{ma2.model_name}_epoch1_{ma1.epochs_names[epoch_idx1]}_epoch2_{ma2.epochs_names[epoch_idx2]}.pdf")
             )
         if show:
             plt.show()
