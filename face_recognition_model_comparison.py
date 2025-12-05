@@ -202,11 +202,12 @@ def main():
     lr = 1e-3
     num_epochs = 70
     bn_list = [False]
-    init_bias_list = [10.0, None, 0.0]#1.0]#,[10.0, 5.0, 1.0, 0.5, 0.1]#
-    seeds = [#0, 1, 143, 98, 42, 
+    init_bias_list = [0.0]#10.0, None, 1.0]#,[10.0, 5.0, 1.0, 0.5, 0.1]#
+    seeds = [0, 1, 143, 98, 42, 
              11, 7, 13, 21, 27, 31, 37, 43, 49, 53, 59,
              61, 67, 71, 73, 79, 83, 89, 97, 101, 103,
              107, 109, 113, 127]
+    #Done for none - 11-103
     model_list, titles, params = get_models(lr, num_epochs, bn_list, init_bias_list, seeds=seeds, resnet=True, simple=True)
     train_models(model_list, titles, params, device, lr, num_epochs)
 
