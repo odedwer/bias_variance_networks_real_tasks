@@ -20,7 +20,7 @@ import os
 from tqdm import tqdm
 
 from utils import get_device
-
+from collections import defaultdict
 from ResNet import ResNet
 from face_recognition_model_comparison import SimpleCNN, test_transforms, FER2013Dataset
 
@@ -68,8 +68,8 @@ class ModelAnalysis:
         self.model_name = model_chk_path.split("_")[2]
         
         #list index = epoch id
-        self.correct_per_epoch = []  # list of dicts: [{class_label: [indices]}, ...]
-        self.incorrect_per_epoch = []  # list of dicts: [{class_label: [indices]}, ...]
+        # self.correct_per_epoch = []  # list of dicts: [{class_label: [indices]}, ...]
+        # self.incorrect_per_epoch = []  # list of dicts: [{class_label: [indices]}, ...]
 
         for id,model in enumerate(self.epochs):
             correct = 0
