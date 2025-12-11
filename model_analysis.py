@@ -34,7 +34,7 @@ class ModelAnalysis:
     def __init__(self, model_chk_path, device):
         self.epochs_names = []
         model_chkpoints = os.listdir(os.path.join(MODELS_FOLDER_PATH, model_chk_path))
-        self.params = pd.read_csv(os.path.join("runs", model_chk_path, "params.csv"))
+        #self.params = pd.read_csv(os.path.join("runs", model_chk_path, "params.csv"))
         #create appropriate model instances
         if "SimpleCNN" in model_chk_path:
             self.epochs = [
