@@ -24,7 +24,7 @@ from utils import get_device
 from ResNet import ResNet
 from face_recognition_model_comparison import SimpleCNN, test_transforms, FER2013Dataset
 
-MODELS_FOLDER_PATH = "models/models_for_analysis"
+MODELS_FOLDER_PATH = "models/models_for_analysis_seed83"
 classes=["fear","angry"]
 
 class ModelAnalysis:
@@ -211,19 +211,56 @@ for model in model_analysis_obj:
 import random
 from collections import defaultdict
 
-def sample_indices_per_class(dataset, n_per_class=3, seed=42):
+def sample_indices_per_class(dataset, n_per_class=3, seed=42, ma: ModelAnalysis = None, epoch_idx: int = -1):
+    """
+    If ma is None: same behavior as before -> returns a flat list of sampled indices (n_per_class per class).
+    If ma is provided: returns a dict mapping class_index -> {"correct": [...], "incorrect": [...]} where each list
+    contains up to n_per_class sampled indices for that class (according to model `ma.epochs[epoch_idx]` predictions).
+    """
     random.seed(seed)
-    class_to_indices = defaultdict(list)
-    for idx, (_, label) in enumerate(dataset):
-        class_to_indices[label].append(idx)
-    sampled_indices = []
-    for indices in class_to_indices.values():
-        sampled_indices.extend(random.sample(indices, min(n_per_class, len(indices))))
-    return sampled_indices
 
-sampled_indices = sample_indices_per_class(model_analysis_obj[0].dataset, n_per_class=4)
+    if ma is None:
+        class_to_indices = defaultdict(list)
+        for idx, (_, label) in enumerate(dataset):
+            class_to_indices[label].append(idx)
+        sampled_indices = []
+        for indices in class_to_indices.values():
+            sampled_indices.extend(random.sample(indices, min(n_per_class, len(indices))))
+        return sampled_indices
+
+    # Use the provided ModelAnalysis to separate correct / incorrect samples per class
+    model = ma.epochs[epoch_idx]
+    model.eval()
+    device = ma.device
+
+    correct = defaultdict(list)
+    incorrect = defaultdict(list)
+
+    with torch.no_grad():
+        for idx in range(100):
+            image, label = dataset[idx]
+            # image is expected to be a tensor already transformed by dataset
+            out = model(image.unsqueeze(0).to(device))
+            pred = out.argmax(dim=1).item()
+            if pred == label:
+                correct[label].append(idx)
+            else:
+                incorrect[label].append(idx)
+
+    result = {}
+    all_classes = sorted(set(list(correct.keys()) + list(incorrect.keys())))
+    for cls in all_classes:
+        corr_list = correct.get(cls, [])
+        incorr_list = incorrect.get(cls, [])
+        sampled_corr = random.sample(corr_list, min(n_per_class, len(corr_list))) if corr_list else []
+        sampled_incorr = random.sample(incorr_list, min(n_per_class, len(incorr_list))) if incorr_list else []
+        result[cls] = {"correct": sampled_corr, "incorrect": sampled_incorr}
+
+    return result
+
 
 for model in model_analysis_obj:
+    sampled_indices = sample_indices_per_class(model_analysis_obj[0].dataset, n_per_class=7, ma=model, epoch_idx=-1)
     for idx in sampled_indices:
         model.visualize_saliency_map(idx, show=False, save=True)
 # %%
