@@ -66,18 +66,48 @@ class ModelAnalysis:
         # calculate accuracy
         self.accuracy = []
         self.model_name = model_chk_path.split("_")[2]
-        for model in self.epochs:
+        
+        #list index = epoch id
+        self.correct_per_epoch = []  # list of dicts: [{class_label: [indices]}, ...]
+        self.incorrect_per_epoch = []  # list of dicts: [{class_label: [indices]}, ...]
+
+        for id,model in enumerate(self.epochs):
             correct = 0
             total = 0
-            #TODO continue here
-            with torch.no_grad():
-                for images, labels in self.dataloader:
-                    images = images.to(self.device)
-                    labels = labels.to(self.device)
-                    outputs = model(images)
-                    _, predicted = torch.max(outputs.data, 1)
-                    total += labels.size(0)
-                    correct += (predicted == labels).sum().item()
+            
+            if (id == len(self.epochs)-1): #final epoch - track correct/incorrect ids
+                self.correct_ids = defaultdict(list)
+                self.incorrect_ids = defaultdict(list)
+
+                with torch.no_grad():
+                    for batch_idx, (images, labels) in enumerate(self.dataloader):
+                        images = images.to(self.device)
+                        labels = labels.to(self.device)
+                        outputs = model(images)
+                        _, predicted = torch.max(outputs.data, 1)
+                        total += labels.size(0)
+                        correct += (predicted == labels).sum().item()
+                        
+                        # Track correct/incorrect per class
+                        for i, (pred, label) in enumerate(zip(predicted, labels)):
+                            global_idx = batch_idx * self.dataloader.batch_size + i
+                            label_val = label.item()
+                            if pred == label:
+                                self.correct_ids[label_val].append(global_idx)
+                            else:
+                                self.incorrect_ids[label_val].append(global_idx)
+
+                
+            else:
+                with torch.no_grad():
+                    for images, labels in self.dataloader:
+                        images = images.to(self.device)
+                        labels = labels.to(self.device)
+                        outputs = model(images)
+                        _, predicted = torch.max(outputs.data, 1)
+                        total += labels.size(0)
+                        correct += (predicted == labels).sum().item()
+
             self.accuracy.append(100 * correct / total)
 
     @staticmethod
@@ -205,8 +235,8 @@ for model_name in os.listdir(MODELS_FOLDER_PATH):
     model_analysis_obj.append(ModelAnalysis(model_name, device))
 # %%
 
-for model in model_analysis_obj:
-    model.visualize_filters(show=False, save=True)
+# for model in model_analysis_obj:
+#     model.visualize_filters(show=False, save=True)
 #  %%
 import random
 from collections import defaultdict
@@ -230,32 +260,22 @@ def sample_indices_per_class(dataset, n_per_class=3, seed=42, ma: ModelAnalysis 
 
     # Use the provided ModelAnalysis to separate correct / incorrect samples per class
     model = ma.epochs[epoch_idx]
-    model.eval()
-    device = ma.device
 
-    correct = defaultdict(list)
-    incorrect = defaultdict(list)
-
-    with torch.no_grad():
-        for idx in range(100):
-            image, label = dataset[idx]
-            # image is expected to be a tensor already transformed by dataset
-            out = model(image.unsqueeze(0).to(device))
-            pred = out.argmax(dim=1).item()
-            if pred == label:
-                correct[label].append(idx)
-            else:
-                incorrect[label].append(idx)
 
     result = {}
-    all_classes = sorted(set(list(correct.keys()) + list(incorrect.keys())))
+    correct_dict = ma.correct_ids
+    incorrect_dict = ma.incorrect_ids
+    print("Correct dict:", correct_dict)
+    print("Incorrect dict:", incorrect_dict)
+
+    all_classes = sorted(set(list(correct_dict.keys()) + list(incorrect_dict.keys())))
     for cls in all_classes:
-        corr_list = correct.get(cls, [])
-        incorr_list = incorrect.get(cls, [])
+        corr_list = correct_dict.get(cls, [])
+        incorr_list = incorrect_dict.get(cls, [])
         sampled_corr = random.sample(corr_list, min(n_per_class, len(corr_list))) if corr_list else []
         sampled_incorr = random.sample(incorr_list, min(n_per_class, len(incorr_list))) if incorr_list else []
         result[cls] = {"correct": sampled_corr, "incorrect": sampled_incorr}
-
+    
     return result
 
 
@@ -264,12 +284,12 @@ for model in model_analysis_obj:
     for idx in sampled_indices:
         model.visualize_saliency_map(idx, show=False, save=True)
 # %%
-model_pairs = combinations_with_replacement(range(len(model_analysis_obj)), 2)
-for ma1_idx, ma2_idx in tqdm(list(model_pairs)):
-    ma1 = model_analysis_obj[ma1_idx]
-    ma2 = model_analysis_obj[ma2_idx]
-    for epoch_idx1 in range(len(ma1.epochs)):
-        for epoch_idx2 in range(len(ma2.epochs)):
-            results = cka_comparison(epoch_idx1, ma1, ma1.get_model_layer_names(epoch_idx1), epoch_idx2,
-                                     ma2, ma2.get_model_layer_names(epoch_idx2),
-                                     show=False, save=True)
+# model_pairs = combinations_with_replacement(range(len(model_analysis_obj)), 2)
+# for ma1_idx, ma2_idx in tqdm(list(model_pairs)):
+#     ma1 = model_analysis_obj[ma1_idx]
+#     ma2 = model_analysis_obj[ma2_idx]
+#     for epoch_idx1 in range(len(ma1.epochs)):
+#         for epoch_idx2 in range(len(ma2.epochs)):
+#             results = cka_comparison(epoch_idx1, ma1, ma1.get_model_layer_names(epoch_idx1), epoch_idx2,
+#                                      ma2, ma2.get_model_layer_names(epoch_idx2),
+#                                      show=False, save=True)
