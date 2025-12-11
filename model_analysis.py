@@ -268,8 +268,8 @@ model_pairs = combinations_with_replacement(range(len(model_analysis_obj)), 2)
 for ma1_idx, ma2_idx in tqdm(list(model_pairs)):
     ma1 = model_analysis_obj[ma1_idx]
     ma2 = model_analysis_obj[ma2_idx]
-    for epoch_idx1 in range(len(ma1.models)):
-        for epoch_idx2 in range(len(ma2.models)):
+    for epoch_idx1 in range(len(ma1.epochs)):
+        for epoch_idx2 in range(len(ma2.epochs)):
             results = cka_comparison(epoch_idx1, ma1, ma1.get_model_layer_names(epoch_idx1), epoch_idx2,
                                      ma2, ma2.get_model_layer_names(epoch_idx2),
                                      show=False, save=True)
