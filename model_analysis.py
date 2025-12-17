@@ -81,12 +81,15 @@ class ModelAnalysis:
 
                 with torch.no_grad():
                     for batch_idx, (images, labels) in enumerate(self.dataloader):
+                        print("Batch idx:", batch_idx, "Batch size:", images.size(0), "labels:", set(labels))
                         images = images.to(self.device)
                         labels = labels.to(self.device)
                         outputs = model(images)
                         _, predicted = torch.max(outputs.data, 1)
                         total += labels.size(0)
                         correct += (predicted == labels).sum().item()
+                        print(total, correct)
+
                         
                         # Track correct/incorrect per class
                         for i, (pred, label) in enumerate(zip(predicted, labels)):
@@ -96,6 +99,7 @@ class ModelAnalysis:
                                 self.correct_ids[label_val].append(global_idx)
                             else:
                                 self.incorrect_ids[label_val].append(global_idx)
+                    
 
                 
             else:
@@ -259,16 +263,17 @@ def sample_indices_per_class(dataset, n_per_class=3, seed=42, ma: ModelAnalysis 
         return sampled_indices
 
     # Use the provided ModelAnalysis to separate correct / incorrect samples per class
-    model = ma.epochs[epoch_idx]
+    model = ma.epochs[epoch_idx] #last epoch by default
 
 
     result = {}
     correct_dict = ma.correct_ids
     incorrect_dict = ma.incorrect_ids
-    print("Correct dict:", correct_dict)
-    print("Incorrect dict:", incorrect_dict)
+    # print("Correct dict:", correct_dict)
+    # print("Incorrect dict:", incorrect_dict)
 
     all_classes = sorted(set(list(correct_dict.keys()) + list(incorrect_dict.keys())))
+    print("All classes:", all_classes)
     for cls in all_classes:
         corr_list = correct_dict.get(cls, [])
         incorr_list = incorrect_dict.get(cls, [])
