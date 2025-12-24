@@ -81,7 +81,7 @@ class ModelAnalysis:
 
                 with torch.no_grad():
                     for batch_idx, (images, labels) in enumerate(self.dataloader):
-                        print("Batch idx:", batch_idx, "Batch size:", images.size(0), "labels:", set(labels))
+                        print("Batch idx:", batch_idx, "Batch size:", images.size(0), "labels:", set(labels.tolist()))
                         images = images.to(self.device)
                         labels = labels.to(self.device)
                         outputs = model(images)
