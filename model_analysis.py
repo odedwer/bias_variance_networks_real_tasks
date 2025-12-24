@@ -88,7 +88,6 @@ class ModelAnalysis:
                         _, predicted = torch.max(outputs.data, 1)
                         total += labels.size(0)
                         correct += (predicted == labels).sum().item()
-                        print(total, correct)
 
                         
                         # Track correct/incorrect per class
@@ -99,9 +98,10 @@ class ModelAnalysis:
                                 self.correct_ids[label_val].append(global_idx)
                             else:
                                 self.incorrect_ids[label_val].append(global_idx)
+                    print(f"Total correct: {sum(len(v) for v in self.correct_ids.values())}, Total incorrect: {sum(len(v) for v in self.incorrect_ids.values())}")
+                    print(total, correct)
                     
-
-                
+                    
             else:
                 with torch.no_grad():
                     for images, labels in self.dataloader:
