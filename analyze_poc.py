@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
+import hashlib  # <-- Added for fingerprinting
+import json  # <-- Added for fingerprinting
 from face_recognition_model_comparison import SimpleCNN
 from ResNet import ResNet
 from poc_bias_variance import FER2013BinaryDataset
@@ -13,6 +15,9 @@ from model_analysis import test_transforms
 from torch_cka import CKA
 from utils import get_device
 import warnings
+
+
+# --- (ModelAnalysis class remains unchanged) ---
 class ModelAnalysis:
     def __init__(self, model_chk_path, device):
         self.epochs = []
@@ -29,10 +34,10 @@ class ModelAnalysis:
             params = pd.read_csv(os.path.join("runs", model_chk_path, "params.csv"))
 
             self.models = [
-                SimpleCNN(num_classes=2,bn=False, init_bias=float(params.iloc[-1,-1]) if params.iloc[-1,-1]!= 'None' else None)
+                SimpleCNN(num_classes=2, bn=False,
+                          init_bias=float(params.iloc[-1, -1]) if params.iloc[-1, -1] != 'None' else None)
                 for _ in range(len(model_chkpoints))
             ]
-
 
         # sort by creation date
         model_chkpoints.sort(key=lambda x: os.path.getctime(os.path.join("models", model_chk_path, x)))
@@ -49,11 +54,13 @@ class ModelAnalysis:
         for model in self.models:
             model.eval()
         self.dataset = FER2013BinaryDataset('data/face-expression/test', transform=test_transforms)
-        self.dataloader = DataLoader(self.dataset, batch_size=256, shuffle=False, num_workers=8, persistent_workers=True, pin_memory=True)
+        self.dataloader = DataLoader(self.dataset, batch_size=128, shuffle=False, num_workers=4,
+                                     persistent_workers=True, pin_memory=True)
         self.device = device
         # calculate accuracy
         self.accuracy = []
-        self.model_name = model_chk_path.split("_")[2] if "POC" not in model_chk_path else model_chk_path.split("-")[-1][7:]
+        self.model_name = model_chk_path.split("_")[2] if "POC" not in model_chk_path else model_chk_path.split("-")[
+                                                                                               -1][7:]
         for model in self.models:
             correct = 0
             total = 0
@@ -100,7 +107,17 @@ class ModelAnalysis:
             image.requires_grad = True
             output = model(image[None, ...].to(self.device))
             output[0, output.argmax()].backward()
-            saliency_maps.append(self._norm(image.grad.abs()[0]))
+
+            # --- START OF FIX for potential zero gradient ---
+            saliency = image.grad.abs()[0]
+            s_min = saliency.min()
+            s_max = saliency.max()
+            s_range = s_max - s_min
+            # Add a small epsilon to prevent division by zero
+            norm_saliency = (saliency - s_min) / (s_range + 1e-8)
+            saliency_maps.append(norm_saliency)
+            # --- END OF FIX ---
+
             # plot the saliency map on top of the image
         n_rows, n_cols = np.sqrt(len(saliency_maps)).astype(int), np.ceil(
             len(saliency_maps) / np.sqrt(len(saliency_maps))).astype(int)
@@ -128,7 +145,8 @@ class ModelAnalysis:
         if save:
             os.makedirs(os.path.join("figures", "saliency_maps", self.model_name), exist_ok=True)
             plt.savefig(
-                os.path.join("figures", "saliency_maps", self.model_name, f"{self.model_name}_img_{img_idx}_class_{label}.pdf")
+                os.path.join("figures", "saliency_maps", self.model_name,
+                             f"{self.model_name}_img_{img_idx}_class_{label}.pdf")
             )
         if show:
             plt.show()
@@ -148,23 +166,51 @@ def cka_comparison(epoch_idx1: int, ma1: ModelAnalysis, ma_layers1: list[str], e
     if ma_layers2 is None:
         ma_layers2 = ma_layers1
 
-    # <<< START OF FIX >>>
-    with torch.no_grad():  # Add this context manager
-        with torch.amp.autocast('cuda', enabled=False):
-            cka = CKA(
-                ma1.models[epoch_idx1],
-                ma2.models[epoch_idx2],
-                model1_name=ma1.model_name,
-                model2_name=ma2.model_name,
-                model1_layers=ma_layers1,
-                model2_layers=ma_layers2,
-                device=ma1.device
-            )
-            try:
-                cka.compare(ma1.dataloader)
-            except AssertionError:
-                pass
-            results = cka.export()
+    # --- Caching Logic ---
+    CKA_CACHE_DIR = "results/cka"
+    os.makedirs(CKA_CACHE_DIR, exist_ok=True)
+
+    # Create a unique fingerprint for the comparison
+    model1_name = ma1.model_name
+    model2_name = ma2.model_name
+    epoch1_str = str(ma1.epochs[epoch_idx1])
+    epoch2_str = str(ma2.epochs[epoch_idx2])
+
+    # Hash the layer lists to create a short, unique ID
+    layers1_hash = hashlib.md5(json.dumps(ma_layers1, sort_keys=True).encode()).hexdigest()[:8]
+    layers2_hash = hashlib.md5(json.dumps(ma_layers2, sort_keys=True).encode()).hexdigest()[:8]
+
+    filename = f"{model1_name}__{epoch1_str}__{layers1_hash}__VS__{model2_name}__{epoch2_str}__{layers2_hash}.pt"
+    cache_path = os.path.join(CKA_CACHE_DIR, filename)
+
+    # Check if results are already cached
+    if os.path.exists(cache_path):
+        # print(f"Loading cached CKA results from: {cache_path}")
+        results = torch.load(cache_path)
+    else:
+        # print(f"Calculating CKA, saving to: {cache_path}")
+        with torch.no_grad():
+            with torch.amp.autocast('cuda', enabled=False):
+                cka = CKA(
+                    ma1.models[epoch_idx1],
+                    ma2.models[epoch_idx2],
+                    model1_name=model1_name,
+                    model2_name=model2_name,
+                    model1_layers=ma_layers1,
+                    model2_layers=ma_layers2,
+                    device=ma1.device
+                )
+                try:
+                    cka.compare(ma1.dataloader)
+                except AssertionError:
+                    pass
+                results = cka.export()
+
+                # Save results to cache
+                torch.save(results, cache_path)
+                del cka
+
+    # --- Plotting Logic ---
     if plot:
         fig = plt.figure(figsize=(15, 15))
         col = plt.imshow(results['CKA'], vmin=0, vmax=1, cmap="coolwarm", origin="lower")
@@ -172,32 +218,37 @@ def cka_comparison(epoch_idx1: int, ma1: ModelAnalysis, ma_layers1: list[str], e
         # annotate the heatmap
         for i in range(results['CKA'].shape[0]):
             for j in range(results['CKA'].shape[1]):
-                plt.text(j, i, f"{results['CKA'][i, j]:.2f}", ha="center", va="center", color="black")
+                plt.text(j, i, f"{results['CKA'][i, j]:.2f}", ha="center", va="center", color="black", fontsize=16, fontweight='bold')
 
         plt.xticks(range(len(results['model2_layers'])), results['model2_layers'], rotation=90)
         plt.yticks(range(len(results['model1_layers'])), results['model1_layers'])
         plt.title(f"CKA comparison between {ma1.model_name} and {ma2.model_name}", fontsize=18, fontweight="bold")
-        plt.xlabel(ma2.model_name+f" epoch {ma2.epochs[epoch_idx2]}", fontsize=15, fontweight="bold")
-        plt.ylabel(ma1.model_name+f" epoch {ma2.epochs[epoch_idx2]}", fontsize=15, fontweight="bold")
+        plt.xlabel(ma2.model_name + f" epoch {ma2.epochs[epoch_idx2]}", fontsize=15, fontweight="bold")
+        plt.ylabel(ma1.model_name + f" epoch {ma1.epochs[epoch_idx1]}", fontsize=15,
+                   fontweight="bold")  # Fixed: was ma2.epochs
         plt.tight_layout()
-        os.makedirs(os.path.join("figures", "cka"), exist_ok=True)
+
+        # Create a unique path for the figure
+        FIGURE_CACHE_DIR = "figures/cka"
+        os.makedirs(FIGURE_CACHE_DIR, exist_ok=True)
+        # Use the same filename but with .pdf
+        figure_path = os.path.join(FIGURE_CACHE_DIR, os.path.splitext(filename)[0] + ".svg")
+
         if save:
-            plt.savefig(
-                os.path.join("figures", "cka",
-                             f"{ma1.model_name}_{ma2.model_name}_epoch1_{ma1.epochs[epoch_idx1]}_epoch2_{ma2.epochs[epoch_idx2]}.pdf")
-            )
+            plt.savefig(figure_path)
         if show:
             plt.show()
-        else:
-            plt.close('all')
-    return results
 
+        plt.close(fig)  # Close the specific figure
+
+    return results
 
 
 def run_analysis():
     # !!! IMPORTANT !!!
-    # UPDATE bdthese paths with the timestamped folder names created by poc_bias_variance.py
+    # UPDATE these paths with the timestamped folder names created by poc_bias_variance.py
     # Look inside your 'runs' or 'models' directory for folders starting with "POC_"
+<<<<<<< HEAD
     LOW_VAR_EXP_DIR = "28-10-2025_12-52-37_POC_Low_Variance_Bias_seed2"
     HIGH_VAR_EXP_DIR = "28-10-2025_12-56-07_POC_High_Variance_Bias_seed2"
 
@@ -215,56 +266,102 @@ def run_analysis():
     if not os.path.exists(os.path.join("models", HIGH_VAR_EXP_DIR)):
         raise FileNotFoundError(f"Experiment directory not found: {HIGH_VAR_EXP_DIR}. Please check the path.")
 
-    # We still need ModelAnalysis to load the models and dataloaders for CKA
-    # Note: The 'happy'/'sad' test set is a subset of the full test set, so the dataloader is compatible.
     ma_low_var = ModelAnalysis(LOW_VAR_EXP_DIR, device)
     ma_high_var = ModelAnalysis(HIGH_VAR_EXP_DIR, device)
     cka_progression = {
-        "Low Variance Bias":None, "High Variance Bias":None
+        ma_low_var.model_name: None,
+        ma_high_var.model_name: None
     }
+
+    # --- Caching for CKA progression ---
+    CKA_PROGRESSION_CACHE_DIR = "results/cka_over_epochs"
+    os.makedirs(CKA_PROGRESSION_CACHE_DIR, exist_ok=True)
+
+    print("Analyzing CKA progression over epochs...")
     for ma, name in zip([ma_low_var, ma_high_var],
-                        ["Low Variance Bias", "High Variance Bias"]):
+                        [ma_low_var.model_name, ma_high_var.model_name]):  # Use dynamic names
+
+        # --- Check if progression data is already cached ---
+        progression_cache_path = os.path.join(CKA_PROGRESSION_CACHE_DIR, f"{name}_cka_progression.pt")
+        # if os.path.exists(progression_cache_path):
+        #     print(f"Loading cached CKA progression for {name} from: {progression_cache_path}")
+        #     cka_progression[name] = torch.load(progression_cache_path)
+        #     continue  # Skip to the next model
+        # --- End cache check ---
 
         layer_names = [name for name, module in ma.models[-1].named_modules() if
                        isinstance(module, (torch.nn.Conv2d, torch.nn.Linear))]
         cka_over_epochs = {
-            'conv1-conv2':[],
-            'conv2-fc1':[],
-            'fc1-fc2':[]
+            'conv1-conv2': [],
+            'conv2-fc1': [],
+            'fc1-fc2': []
         }
-        for epoch in tqdm(range(len(ma_low_var.models))):
-            res_low = cka_comparison(
+
+        # Use the correct model length for the loop
+        for epoch in tqdm(range(len(ma.models)), desc=f"Analyzing {ma.model_name}"):
+            res = cka_comparison(
                 epoch_idx1=epoch,
                 ma1=ma,
                 ma_layers1=layer_names,
-                epoch_idx2=epoch,
+                epoch_idx2=epoch,  # Compare model to itself at this epoch
+                ma2=ma,
+                ma_layers2=layer_names,
                 plot=True,
                 show=False,
                 save=True
             )
             # save cka results for specific layer pairs
-            cka_over_epochs['conv1-conv2'].append(res_low['CKA'][0,1].item())
-            cka_over_epochs['conv2-fc1'].append(res_low['CKA'][1,2].item())
-            cka_over_epochs['fc1-fc2'].append(res_low['CKA'][2,3].item())
+            cka_over_epochs['conv1-conv2'].append(res['CKA'][0, 1].item())
+            cka_over_epochs['conv2-fc1'].append(res['CKA'][1, 2].item())
+            cka_over_epochs['fc1-fc2'].append(res['CKA'][2, 3].item())
+
             # Free up GPU memory
             torch.cuda.empty_cache()
-            del res_low
+            del res
+
         cka_progression[name] = cka_over_epochs.copy()
+
+        # --- Save the computed progression data ---
+        print(f"Saving CKA progression for {name} to: {progression_cache_path}")
+        torch.save(cka_progression[name], progression_cache_path)
+
     # Plot CKA over epochs for both models
-    epochs = list(range(1, len(ma_low_var.models) + 1))
+    print("Plotting CKA progression...")
+    epochs = ma_low_var.epochs  # Use the epoch labels from ModelAnalysis
+
     plt.figure(figsize=(10, 6))
-    for name,cka_over_epochs_model in cka_progression.items():
+    for name, cka_over_epochs_model in cka_progression.items():
+        # reset plot color cycle
+        plt.gca().set_prop_cycle(None)
+        if cka_over_epochs_model is None:  # Handle case where a model might not have run
+            continue
+
+        # Ensure epoch list and data list match in length
+        data_len = len(cka_over_epochs_model['conv1-conv2'])
+        epoch_labels = np.arange(1,data_len+1,5)
+        epoch_ticks = epoch_labels
+
         for layer_pair in cka_over_epochs_model.keys():
-            plt.plot(epochs, cka_over_epochs_model[layer_pair], label=f'{name} - {layer_pair}', linestyle='--' if 'High' in name else '-')
+            data = cka_over_epochs_model[layer_pair][::5]
+            plt.plot(epoch_ticks[1:], data[1:], label=f'{name} - {layer_pair}', linestyle='--' if 'High' in name else '-')
+
+    # Set x-ticks to be the epoch labels
+    plt.xticks(ticks=epoch_ticks, labels=epoch_labels,fontsize=9)
     plt.xlabel('Epochs')
     plt.ylabel('CKA Similarity')
     plt.title('CKA Similarity Over Epochs for Low and High Variance Models')
-    plt.legend()
-    os.makedirs("figures/cka_over_epochs", exist_ok=True)
-    plt.savefig("figures/cka_over_epochs/cka_over_epochs_comparison.pdf")
-    plt.close('all')
+    # remove top and right spines
+    plt.gca().spines['top'].set_visible(False)
+    plt.gca().spines['right'].set_visible(False)
+    plt.legend(loc='upper right')
+    plt.tight_layout()
 
+    os.makedirs(CKA_PROGRESSION_CACHE_DIR, exist_ok=True)
+    plt.savefig(os.path.join(CKA_PROGRESSION_CACHE_DIR, "cka_over_epochs_comparison.pdf"))
+    plt.close('all')
+    print("✅ CKA analysis complete. Plots saved to 'figures/cka' and 'results/cka_over_epochs'.")
 
 
 if __name__ == '__main__':
     run_analysis()
+
