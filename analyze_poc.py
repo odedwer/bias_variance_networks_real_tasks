@@ -198,8 +198,8 @@ def run_analysis():
     # !!! IMPORTANT !!!
     # UPDATE bdthese paths with the timestamped folder names created by poc_bias_variance.py
     # Look inside your 'runs' or 'models' directory for folders starting with "POC_"
-    LOW_VAR_EXP_DIR = "28-10-2025_20-02-21_POC_Low_Variance_Bias_seed2"
-    HIGH_VAR_EXP_DIR = "28-10-2025_20-10-23_POC_High_Variance_Bias_seed2"
+    LOW_VAR_EXP_DIR = "28-10-2025_12-52-37_POC_Low_Variance_Bias_seed2"
+    HIGH_VAR_EXP_DIR = "28-10-2025_12-56-07_POC_High_Variance_Bias_seed2"
 
     device = get_device()
 
