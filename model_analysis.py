@@ -26,7 +26,7 @@ from face_recognition_model_comparison import SimpleCNN, test_transforms, FER201
 
 MODELS_FOLDER_PATH = "models/models_for_analysis_seed83/resnet10"
 classes=["fear","angry"]
-
+ 
 class ModelAnalysis:
     """
     a model after training different epochs
@@ -272,16 +272,23 @@ def sample_indices_per_class(dataset, n_per_class=3, seed=42, ma: ModelAnalysis 
     # print("Correct dict:", correct_dict)
     # print("Incorrect dict:", incorrect_dict)
 
-    all_classes = sorted(set(list(correct_dict.keys()) + list(incorrect_dict.keys())))
-    print("All classes:", all_classes)
+    all_classes = sorted(set(list(correct_dict.keys()) + list(incorrect_dict.keys()))) #gt labels
+    #print("All classes:", all_classes)
     for cls in all_classes:
+        print(f"Sampling for class {cls}:")
         corr_list = correct_dict.get(cls, [])
         incorr_list = incorrect_dict.get(cls, [])
+        print(f"  Correct samples available: {len(corr_list)}, Incorrect samples available: {len(incorr_list)}")
         sampled_corr = random.sample(corr_list, min(n_per_class, len(corr_list))) if corr_list else []
         sampled_incorr = random.sample(incorr_list, min(n_per_class, len(incorr_list))) if incorr_list else []
         result[cls] = {"correct": sampled_corr, "incorrect": sampled_incorr}
-    
-    return result
+
+    flattened = []
+    for cls in sorted(result.keys()):
+        flattened.extend(result[cls]["correct"])
+        flattened.extend(result[cls]["incorrect"])
+
+    return flattened
 
 
 # for model in model_analysis_obj:
