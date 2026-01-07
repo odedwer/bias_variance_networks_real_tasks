@@ -24,7 +24,7 @@ from collections import defaultdict
 from ResNet import ResNet
 from face_recognition_model_comparison import SimpleCNN, test_transforms, FER2013Dataset
 
-MODELS_FOLDER_PATH = "models/models_for_analysis_seed83"
+MODELS_FOLDER_PATH = "models/models_for_analysis_seed83/resnet10"
 classes=["fear","angry"]
 
 class ModelAnalysis:
@@ -284,17 +284,18 @@ def sample_indices_per_class(dataset, n_per_class=3, seed=42, ma: ModelAnalysis 
     return result
 
 
-for model in model_analysis_obj:
-    sampled_indices = sample_indices_per_class(model_analysis_obj[0].dataset, n_per_class=7, ma=model, epoch_idx=-1)
-    for idx in sampled_indices:
-        model.visualize_saliency_map(idx, show=False, save=True)
+# for model in model_analysis_obj:
+#     sampled_indices = sample_indices_per_class(model_analysis_obj[0].dataset, n_per_class=7, ma=model, epoch_idx=-1)
+#     for idx in sampled_indices:
+#         model.visualize_saliency_map(idx, show=False, save=True)
 # %%
-# model_pairs = combinations_with_replacement(range(len(model_analysis_obj)), 2)
-# for ma1_idx, ma2_idx in tqdm(list(model_pairs)):
-#     ma1 = model_analysis_obj[ma1_idx]
-#     ma2 = model_analysis_obj[ma2_idx]
-#     for epoch_idx1 in range(len(ma1.epochs)):
-#         for epoch_idx2 in range(len(ma2.epochs)):
-#             results = cka_comparison(epoch_idx1, ma1, ma1.get_model_layer_names(epoch_idx1), epoch_idx2,
-#                                      ma2, ma2.get_model_layer_names(epoch_idx2),
-#                                      show=False, save=True)
+model_pairs = combinations_with_replacement(range(len(model_analysis_obj)), 2)
+for ma1_idx, ma2_idx in tqdm(list(model_pairs)):
+    ma1 = model_analysis_obj[ma1_idx]
+    ma2 = model_analysis_obj[ma2_idx]
+    for epoch_idx1 in range(len(ma1.epochs)):
+        for epoch_idx2 in range(len(ma2.epochs)):
+            results = cka_comparison(epoch_idx1, ma1, ma1.get_model_layer_names(epoch_idx1), epoch_idx2,
+                                     ma2, ma2.get_model_layer_names(epoch_idx2),
+                                     show=False, save=True)
+
