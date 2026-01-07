@@ -24,9 +24,9 @@ from collections import defaultdict
 from ResNet import ResNet
 from face_recognition_model_comparison import SimpleCNN, test_transforms, FER2013Dataset
 
-MODELS_FOLDER_PATH = "models/models_for_analysis_seed83"
+MODELS_FOLDER_PATH = "models/models_for_analysis_resnet109"
 classes=["fear","angry"]
-
+ 
 class ModelAnalysis:
     """
     a model after training different epochs
@@ -88,7 +88,6 @@ class ModelAnalysis:
                         _, predicted = torch.max(outputs.data, 1)
                         total += labels.size(0)
                         correct += (predicted == labels).sum().item()
-
                         
                         # Track correct/incorrect per class
                         for i, (pred, label) in enumerate(zip(predicted, labels)):
@@ -272,20 +271,29 @@ def sample_indices_per_class(dataset, n_per_class=3, seed=42, ma: ModelAnalysis 
     # print("Correct dict:", correct_dict)
     # print("Incorrect dict:", incorrect_dict)
 
-    all_classes = sorted(set(list(correct_dict.keys()) + list(incorrect_dict.keys())))
-    print("All classes:", all_classes)
+    all_classes = sorted(set(list(correct_dict.keys()) + list(incorrect_dict.keys()))) #gt labels
+    #print("All classes:", all_classes)
     for cls in all_classes:
+        print(f"Sampling for class {cls}:")
         corr_list = correct_dict.get(cls, [])
         incorr_list = incorrect_dict.get(cls, [])
+        print(f"  Correct samples available: {len(corr_list)}, Incorrect samples available: {len(incorr_list)}")
         sampled_corr = random.sample(corr_list, min(n_per_class, len(corr_list))) if corr_list else []
         sampled_incorr = random.sample(incorr_list, min(n_per_class, len(incorr_list))) if incorr_list else []
         result[cls] = {"correct": sampled_corr, "incorrect": sampled_incorr}
-    
-    return result
+
+    flattened = []
+    for cls in sorted(result.keys()):
+        flattened.extend(result[cls]["correct"])
+        flattened.extend(result[cls]["incorrect"])
+
+    return flattened
 
 
 for model in model_analysis_obj:
-    sampled_indices = sample_indices_per_class(model_analysis_obj[0].dataset, n_per_class=7, ma=model, epoch_idx=-1)
+    sampled_indices = 
+    # sample_indices_per_class(model_analysis_obj[0].dataset, n_per_class=7, ma=model, epoch_idx=-1)
+    # print(f"Visualizing saliency maps for model {model.model_name}, sampled indices: {sampled_indices}")
     for idx in sampled_indices:
         model.visualize_saliency_map(idx, show=False, save=True)
 # %%
