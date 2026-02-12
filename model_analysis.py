@@ -217,7 +217,7 @@ class ModelAnalysis:
         p = flat / (s + eps)
         return float(-np.sum(p * np.log(p + eps)))
 
-    def compute_dataset_saliency_entropies(self, show_progress=True, saliency_maps):
+    def compute_dataset_saliency_entropies(self, saliency_maps):
         """Compute saliency entropies for every image in the test dataset using the last epoch.
         For images where multiple saliency maps are returned (future-proofing), the per-image
         entropy is the mean entropy across those maps.
@@ -225,8 +225,7 @@ class ModelAnalysis:
         """
         entropies = []
         iterator = range(len(self.dataset))
-        if show_progress:
-            iterator = tqdm(iterator, desc=f"Entropies {self.model_name}")
+        iterator = tqdm(iterator, desc=f"Entropies {self.model_name}")
 
         for img_idx in iterator:
             img_entropies = [self.saliency_entropy(sm) for sm in saliency_maps]
@@ -287,7 +286,7 @@ def cka_comparison(epoch_idx1: int, ma1: ModelAnalysis, ma_layers1: list[str], e
     return results
 
 
-def compute_models_entropy_stats(model_analysis_objs, show_progress=True):
+def compute_models_entropy_stats(model_analysis_objs):
     """For a list of ModelAnalysis instances, compute per-model average saliency entropy
     (averaged across images), and return a tuple (per_model_entropies, per_model_means,
     overall_mean, overall_variance).
@@ -296,9 +295,9 @@ def compute_models_entropy_stats(model_analysis_objs, show_progress=True):
     saliency_maps = self.compute_saliency_maps(img_idx)
     per_model_means = []
     per_model_entropies = {}
-    iterator = (tqdm(model_analysis_objs, desc="Models") if show_progress else model_analysis_objs)
+    iterator = (tqdm(model_analysis_objs, desc="Models"))
     for ma in iterator:
-        entropies = ma.compute_dataset_saliency_entropies(show_progress=show_progress, saliency_maps)
+        entropies = ma.compute_dataset_saliency_entropies(saliency_maps)
         mean_entropy = float(np.mean(entropies)) if len(entropies) > 0 else 0.0
         per_model_means.append(mean_entropy)
         per_model_entropies[ma.model_name] = {
