@@ -217,7 +217,7 @@ class ModelAnalysis:
         p = flat / (s + eps)
         return float(-np.sum(p * np.log(p + eps)))
 
-    def compute_dataset_saliency_entropies(self, show_progress=True):
+    def compute_dataset_saliency_entropies(self, show_progress=True, saliency_maps):
         """Compute saliency entropies for every image in the test dataset using the last epoch.
         For images where multiple saliency maps are returned (future-proofing), the per-image
         entropy is the mean entropy across those maps.
@@ -229,7 +229,6 @@ class ModelAnalysis:
             iterator = tqdm(iterator, desc=f"Entropies {self.model_name}")
 
         for img_idx in iterator:
-            saliency_maps, _, _, _, _ = self.compute_saliency_maps(img_idx)
             img_entropies = [self.saliency_entropy(sm) for sm in saliency_maps]
             if len(img_entropies) == 0:
                 entropies.append(0.0)
@@ -294,11 +293,12 @@ def compute_models_entropy_stats(model_analysis_objs, show_progress=True):
     overall_mean, overall_variance).
     Always uses the last epoch and shows progress by default.
     """
+    saliency_maps = self.compute_saliency_maps(img_idx)
     per_model_means = []
     per_model_entropies = {}
     iterator = (tqdm(model_analysis_objs, desc="Models") if show_progress else model_analysis_objs)
     for ma in iterator:
-        entropies = ma.compute_dataset_saliency_entropies(show_progress=show_progress)
+        entropies = ma.compute_dataset_saliency_entropies(show_progress=show_progress, saliency_maps)
         mean_entropy = float(np.mean(entropies)) if len(entropies) > 0 else 0.0
         per_model_means.append(mean_entropy)
         per_model_entropies[ma.model_name] = {
