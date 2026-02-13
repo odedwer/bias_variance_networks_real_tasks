@@ -83,17 +83,16 @@ all_vals = torch.cat([
     for p in SAL_DIR.rglob("*.pt")
 ])
 threshold = all_vals.quantile(0.9).item()
+print(f"Global saliency threshold (90th percentile): {threshold:.4f}")
 
 # --- METRICS ---
 for model_dir in SAL_DIR.iterdir():
     for sal_path in model_dir.glob("*.pt"):
         image_id = sal_path.stem
-        mask_path = MASK_DIR / f"{image_id}.pt"
-        if not mask_path.exists():
-            continue
+        
 
         S = torch.load(sal_path)
-        masks = load_masks(mask_path)
+        #masks = load_masks(mask_path)
 
         rec = {
             "model": model_dir.name,
@@ -101,7 +100,10 @@ for model_dir in SAL_DIR.iterdir():
             "entropy": saliency_entropy(S),
             "max_short_distance": max_short_distance(S, threshold),
         }
-        rec.update(face_part_coverage(S, masks, threshold))
+        # mask_path = MASK_DIR / f"{image_id}.pt"
+        # if not mask_path.exists():
+        #     continue
+        #rec.update(face_part_coverage(S, masks, threshold))
         records.append(rec)
 
 df = pd.DataFrame(records)
