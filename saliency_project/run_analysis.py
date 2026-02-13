@@ -52,12 +52,12 @@ detector = FaceLandmarkDetector()
 records = []
 
 # --- PRECOMPUTE MASKS ---
-for image_id, image in dataset:
+for image_id, (image, label) in enumerate(dataset):
     mask_path = MASK_DIR / f"{image_id}.pt"
     if mask_path.exists():
         continue
 
-    landmarks = detector.detect(image)
+    landmarks = detector.detect(image.cpu().detach().numpy())
     if landmarks is None:
         continue
 
