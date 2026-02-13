@@ -18,7 +18,7 @@ class FaceLandmarkDetector:
     def __init__(self):
         # Load pre-trained face landmark model
         base_options = python.BaseOptions(
-        model_asset_path="face_landmarker.task"
+        model_asset_path="saliency_project/face_parts/face_landmarker.task"
         )
 
         options = vision.FaceLandmarkerOptions(
