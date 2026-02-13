@@ -41,7 +41,7 @@ def visualize_saliency_row(
         m = metrics[i]
         ax.set_title(
             f"{model_names[i]}\n"
-            f"H={m['entropy']:.2f}, D={m['max_short_distance']:.1f}\n"
+            f"Entropy={m['entropy']:.2f}, Max Short Distance={m['max_short_distance']:.1f}\n"
             #f"E={m['eyes']:.2f} N={m['nose']:.2f} M={m['mouth']:.2f}"
             ,fontsize=9
         )

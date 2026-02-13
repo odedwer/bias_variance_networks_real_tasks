@@ -82,8 +82,8 @@ all_vals = torch.cat([
     torch.load(p).flatten()
     for p in SAL_DIR.rglob("*.pt")
 ])
-threshold = all_vals.quantile(0.9).item()
-print(f"Global saliency threshold (90th percentile): {threshold:.4f}")
+threshold = all_vals.quantile(0.98).item()
+print(f"Global saliency threshold (98th percentile): {threshold:.4f}")
 
 # --- METRICS ---
 for model_dir in SAL_DIR.iterdir():
