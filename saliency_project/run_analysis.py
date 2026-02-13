@@ -126,7 +126,7 @@ for image_id in example_images:
         )
         model_names.append(model)
 
-    image = dataset[int(image_id)][0].permute(1, 2, 0).cpu().numpy()
+    image = dataset[int(image_id)][0].permute(1, 2, 0)
     #masks = load_masks(MASK_DIR / f"{image_id}.pt")
 
     visualize_saliency_row(image, saliency_maps, None, metrics, model_names) #fix

@@ -27,8 +27,12 @@ def visualize_saliency_row(
     vmax = max(s.max().item() for s in saliency_maps)
 
     for i, ax in enumerate(axes):
-        ax.imshow(image)
-        ax.imshow(saliency_maps[i], cmap="hot", alpha=0.6, vmin=0, vmax=vmax)
+        ax.imshow(image.cpu().detach().numpy(), cmap="gray")
+        ax.imshow(saliency_maps[i].cpu().detach().numpy(), alpha=0.75, cmap="hot", vmin=0, vmax=vmax,
+                               interpolation='bicubic')
+
+        # ax.imshow(image)
+        # ax.imshow(saliency_maps[i].cpu(), cmap="hot", alpha=0.6, vmin=0, vmax=vmax)
 
         # overlay_mask(ax, masks["eyes"], color=[0, 0, 1])
         # overlay_mask(ax, masks["nose"], color=[0, 1, 0])
