@@ -21,8 +21,9 @@ from utils import get_device
 SAL_DIR = Path("saliency_maps")
 MASK_DIR = Path("face_masks")
 MODELS_FOLDER_PATH = "models/models_for_analysis_resnet109/"
+classes=["fear","angry"]
 
-dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=classes)
+dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=)
 
 def create_model(model_chk_path, device):
     model_chkpoints = os.listdir(os.path.join(MODELS_FOLDER_PATH, model_chk_path))
