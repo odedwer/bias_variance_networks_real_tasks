@@ -11,8 +11,8 @@ import os
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from compute_saliency import compute_saliency
-# from face_parts.landmarks import FaceLandmarkDetector
-# from face_parts.masks import build_face_masks, save_masks, load_masks
+from face_parts.landmarks import FaceLandmarkDetector
+from face_parts.masks import build_face_masks, save_masks, load_masks
 from metrics import *
 from plots import visualize_saliency_row
 from face_recognition_model_comparison import FER2013Dataset, SimpleCNN, test_transforms
