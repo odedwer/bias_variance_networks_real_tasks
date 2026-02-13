@@ -43,7 +43,7 @@ def create_model(model_chk_path, device):
     return model_chk_path, model
 
 device = get_device()
-
+models = {}
 for model_chk_path in os.listdir(MODELS_FOLDER_PATH):
     model_name, model = create_model(model_chk_path, device)
     models[model_name] = model
