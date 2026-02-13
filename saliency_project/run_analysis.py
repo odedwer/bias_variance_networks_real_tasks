@@ -44,8 +44,7 @@ def create_model(model_chk_path, device):
 
 device = get_device()
 
-for model_name in os.listdir(MODELS_FOLDER_PATH):
-    model_chk_path = os.path.join(MODELS_FOLDER_PATH, model_name)
+for model_chk_path in os.listdir(MODELS_FOLDER_PATH):
     model_name, model = create_model(model_chk_path, device)
     models[model_name] = model
 
