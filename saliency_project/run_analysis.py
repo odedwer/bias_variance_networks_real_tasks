@@ -66,7 +66,8 @@ records = []
 
 # --- COMPUTE SALIENCY ---
 for model_name, model in models.items():
-    for image_id, image, label in dataset:
+    print(f"Processing model: {model_name}")
+    for image_id, (image, label) in enumerate(dataset):
         path = SAL_DIR / model_name / f"{image_id}.pt"
         if path.exists():
             continue
