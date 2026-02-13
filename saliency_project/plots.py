@@ -34,15 +34,15 @@ def visualize_saliency_row(
         # ax.imshow(image)
         # ax.imshow(saliency_maps[i].cpu(), cmap="hot", alpha=0.6, vmin=0, vmax=vmax)
 
-        # overlay_mask(ax, masks["eyes"], color=[0, 0, 1])
-        # overlay_mask(ax, masks["nose"], color=[0, 1, 0])
-        # overlay_mask(ax, masks["mouth"], color=[1, 0, 0])
+        overlay_mask(ax, masks["eyes"], color=[0, 0, 1])
+        overlay_mask(ax, masks["nose"], color=[0, 1, 0])
+        overlay_mask(ax, masks["mouth"], color=[1, 0, 0])
 
         m = metrics[i]
         ax.set_title(
             f"{model_names[i]}\n"
             f"Entropy={m['entropy']:.2f}, Max Short Distance={m['max_short_distance']:.1f}\n"
-            #f"E={m['eyes']:.2f} N={m['nose']:.2f} M={m['mouth']:.2f}"
+            f"E={m['eyes']:.2f} N={m['nose']:.2f} M={m['mouth']:.2f}"
             ,fontsize=9
         )
 

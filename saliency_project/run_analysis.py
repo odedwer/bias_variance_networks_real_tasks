@@ -20,7 +20,7 @@ from ResNet import ResNet
 from utils import get_device
 
 SAL_DIR = Path("saliency_maps")
-MASK_DIR = Path("face_masks")
+MASK_DIR = Path("saliency_project/face_parts/face_masks")
 MODELS_FOLDER_PATH = "models/models_for_analysis_resnet109/"
 classes=["fear","angry"]
 
@@ -52,17 +52,17 @@ for model_chk_path in os.listdir(MODELS_FOLDER_PATH):
 records = []
 
 # --- PRECOMPUTE MASKS ---
-# for image_id, image in dataset:
-#     mask_path = MASK_DIR / f"{image_id}.pt"
-#     if mask_path.exists():
-#         continue
+for image_id, image in dataset:
+    mask_path = MASK_DIR / f"{image_id}.pt"
+    if mask_path.exists():
+        continue
 
-#     landmarks = detector.detect(image)
-#     if landmarks is None:
-#         continue
+    landmarks = detector.detect(image)
+    if landmarks is None:
+        continue
 
-#     masks = build_face_masks(image, landmarks)
-#     save_masks(masks, mask_path)
+    masks = build_face_masks(image, landmarks)
+    save_masks(masks, mask_path)
 
 # --- COMPUTE SALIENCY ---
 for model_name, model in models.items():
@@ -92,7 +92,7 @@ for model_dir in SAL_DIR.iterdir():
         
 
         S = torch.load(sal_path)
-        #masks = load_masks(mask_path)
+        masks = load_masks(mask_path)
 
         rec = {
             "model": model_dir.name,
@@ -100,10 +100,10 @@ for model_dir in SAL_DIR.iterdir():
             "entropy": saliency_entropy(S),
             "max_short_distance": max_short_distance(S, threshold),
         }
-        # mask_path = MASK_DIR / f"{image_id}.pt"
-        # if not mask_path.exists():
-        #     continue
-        #rec.update(face_part_coverage(S, masks, threshold))
+        mask_path = MASK_DIR / f"{image_id}.pt"
+        if not mask_path.exists():
+            continue
+        rec.update(face_part_coverage(S, masks, threshold))
         records.append(rec)
 
 df = pd.DataFrame(records)
@@ -127,6 +127,6 @@ for image_id in example_images:
         model_names.append(model)
 
     image = dataset[int(image_id)][0].permute(1, 2, 0)
-    #masks = load_masks(MASK_DIR / f"{image_id}.pt")
+    masks = load_masks(MASK_DIR / f"{image_id}.pt")
 
-    visualize_saliency_row(image, saliency_maps, None, metrics, model_names) #fix
+    visualize_saliency_row(image, saliency_maps, masks, metrics, model_names) #fix

@@ -1,56 +1,69 @@
 # face_parts/landmarks.py
+
 """
-Facial landmark detection using MediaPipe Face Mesh.
+Facial landmark detection using the new MediaPipe Tasks API.
 
-This module is responsible ONLY for detecting facial landmarks
-and returning them in pixel coordinates.
-
-If no face is detected, returns None.
+Compatible with MediaPipe >= 0.10.
 """
 
-import mediapipe as mp
 import numpy as np
 import cv2
-print(mp.__file__)  # Should point to your site-packages, not your project
-print(dir(mp))      # Should show 'solutions' in the list
-mp_face_mesh = mp.solutions.face_mesh
+import mediapipe as mp
+
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
+
 
 class FaceLandmarkDetector:
     def __init__(self):
-        # Static image mode is important for datasets
-        self.face_mesh = mp_face_mesh.FaceMesh(
-            static_image_mode=True,
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5
+        # Load pre-trained face landmark model
+        base_options = python.BaseOptions(
+        model_asset_path="face_landmarker.task"
         )
+
+        options = vision.FaceLandmarkerOptions(
+            base_options=base_options,
+            running_mode=vision.RunningMode.IMAGE,
+            num_faces=1,
+        )
+
+        self.detector = vision.FaceLandmarker.create_from_options(options)
 
     def detect(self, image: np.ndarray):
         """
         Args:
-            image: np.ndarray (H, W, 3), RGB or BGR
+            image: np.ndarray (H, W, 3), BGR or RGB
 
         Returns:
-            dict with keys: left_eye, right_eye, nose, mouth
-            Each value is a list of (x, y) pixel coordinates
-            or None if no face is detected
+            dict with:
+                left_eye, right_eye, nose, mouth
+            or None if no face detected
         """
-        if image.shape[2] == 3:
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        else:
-            image_rgb = image
 
-        results = self.face_mesh.process(image_rgb)
-        if not results.multi_face_landmarks:
+        # Convert to RGB (MediaPipe expects RGB)
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        mp_image = mp.Image(
+            image_format=mp.ImageFormat.SRGB,
+            data=image_rgb
+        )
+
+        result = self.detector.detect(mp_image)
+
+        if not result.face_landmarks:
             return None
 
+        landmarks = result.face_landmarks[0]
         h, w, _ = image.shape
-        landmarks = results.multi_face_landmarks[0].landmark
 
         def pts(indices):
-            return [(int(landmarks[i].x * w), int(landmarks[i].y * h)) for i in indices]
+            return [
+                (int(landmarks[i].x * w),
+                 int(landmarks[i].y * h))
+                for i in indices
+            ]
 
-        # MediaPipe landmark indices (stable & standard)
+        # Same semantic groups as before
         left_eye = pts([33, 133, 160, 159, 158, 144, 145, 153])
         right_eye = pts([362, 263, 387, 386, 385, 373, 374, 380])
         nose = pts([1, 2, 98, 327, 168, 197])
