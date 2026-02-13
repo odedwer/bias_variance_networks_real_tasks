@@ -8,7 +8,6 @@ def compute_saliency(model, image, target_class):
     Standard gradient-based saliency map.
     Returns a single-channel normalized saliency map.
     """
-    model.eval()
 
     image = image.unsqueeze(0).requires_grad_(True)  # (1,C,H,W)
     output = model(image)
