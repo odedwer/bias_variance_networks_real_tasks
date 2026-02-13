@@ -4,14 +4,19 @@ import torch
 import pandas as pd
 from pathlib import Path
 
-from saliency.compute_saliency import compute_saliency
+from compute_saliency import compute_saliency
 from face_parts.landmarks import FaceLandmarkDetector
 from face_parts.masks import build_face_masks, save_masks, load_masks
-from metrics.saliency_metrics import *
-from visualization.plots import visualize_saliency_row
+from metrics import *
+from plots import visualize_saliency_row
+from face_recognition_model_comparison import FER2013Dataset
+
 
 SAL_DIR = Path("saliency_maps")
 MASK_DIR = Path("face_masks")
+
+dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=classes)
+
 
 detector = FaceLandmarkDetector()
 records = []
