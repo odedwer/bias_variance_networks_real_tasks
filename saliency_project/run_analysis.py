@@ -70,7 +70,7 @@ for idx in range(len(dataset)):
     if landmarks is None:
         continue
 
-    masks = build_face_masks(image, landmarks)
+    masks = build_face_masks(raw_img, landmarks)
     save_masks(masks, mask_path)
 
 # --- COMPUTE SALIENCY ---
