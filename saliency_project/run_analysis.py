@@ -5,34 +5,59 @@ import pandas as pd
 from pathlib import Path
 
 from compute_saliency import compute_saliency
-from face_parts.landmarks import FaceLandmarkDetector
-from face_parts.masks import build_face_masks, save_masks, load_masks
+# from face_parts.landmarks import FaceLandmarkDetector
+# from face_parts.masks import build_face_masks, save_masks, load_masks
 from metrics import *
 from plots import visualize_saliency_row
 from face_recognition_model_comparison import FER2013Dataset
-
+from ResNet import ResNet
+from face_recognition_model_comparison import SimpleCNN
+from utils import get_device
 
 SAL_DIR = Path("saliency_maps")
 MASK_DIR = Path("face_masks")
+MODELS_FOLDER_PATH = "models/models_for_analysis_resnet109/"
 
 dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=classes)
 
+def create_model(model_chk_path, device)
+    model_chkpoints = os.listdir(os.path.join(MODELS_FOLDER_PATH, model_chk_path))
+    model_chkpoints.sort(key=lambda x: os.path.getctime(os.path.join(MODELS_FOLDER_PATH, model_chk_path, x)))     # sort by creation date - all of the model's checkpoints
+    if "SimpleCNN" in model_chk_path:
+        model = SimpleCNN(bn="BN=True" in model_chk_path, init_bias=0.0 if "Bias=None" not in model_chk_path else None)
+    elif "ResNet" in model_chk_path:
+        model = ResNet(bn="BN=True" in model_chk_path, bias="Bias=None" not in model_chk_path)
 
-detector = FaceLandmarkDetector()
+
+    model.load_state_dict(torch.load(os.path.join(MODELS_FOLDER_PATH, model_chk_path, model_chkpoints[-1]), map_location=device))
+    model = model.to(device)
+    #set models to evaluation mode
+    model.eval()
+
+    return model_chk_path, model
+
+device = get_device()
+
+for model_name in os.listdir(MODELS_FOLDER_PATH):
+    model_chk_path = os.path.join(MODELS_FOLDER_PATH, model_name)
+    model_name, model = create_model(model_chk_path, device)
+    models[model_name] = model
+
+# detector = FaceLandmarkDetector()
 records = []
 
 # --- PRECOMPUTE MASKS ---
-for image_id, image in dataset:
-    mask_path = MASK_DIR / f"{image_id}.pt"
-    if mask_path.exists():
-        continue
+# for image_id, image in dataset:
+#     mask_path = MASK_DIR / f"{image_id}.pt"
+#     if mask_path.exists():
+#         continue
 
-    landmarks = detector.detect(image)
-    if landmarks is None:
-        continue
+#     landmarks = detector.detect(image)
+#     if landmarks is None:
+#         continue
 
-    masks = build_face_masks(image, landmarks)
-    save_masks(masks, mask_path)
+#     masks = build_face_masks(image, landmarks)
+#     save_masks(masks, mask_path)
 
 # --- COMPUTE SALIENCY ---
 for model_name, model in models.items():
