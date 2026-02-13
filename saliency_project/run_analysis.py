@@ -99,10 +99,12 @@ for model_dir in SAL_DIR.iterdir():
     for sal_path in model_dir.glob("*.pt"):
         image_id = sal_path.stem
         
+        mask_path = MASK_DIR / f"{image_id}.pt"
+        if not mask_path.exists():
+            continue
         #all goes to cpu for metric computation
         S = torch.load(sal_path, map_location="cpu")
         masks = load_masks(mask_path)
-
         S = S.cpu()
         masks = {k: v.cpu() for k, v in masks.items()}
 
@@ -112,9 +114,7 @@ for model_dir in SAL_DIR.iterdir():
             "entropy": saliency_entropy(S),
             "max_short_distance": max_short_distance(S, threshold),
         }
-        mask_path = MASK_DIR / f"{image_id}.pt"
-        if not mask_path.exists():
-            continue
+        
         rec.update(face_part_coverage(S, masks, threshold))
         records.append(rec)
 
