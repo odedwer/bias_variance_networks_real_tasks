@@ -11,9 +11,9 @@ If no face is detected, returns None.
 import mediapipe as mp
 import numpy as np
 import cv2
-
+print(mp.__file__)  # Should point to your site-packages, not your project
+print(dir(mp))      # Should show 'solutions' in the list
 mp_face_mesh = mp.solutions.face_mesh
-
 
 class FaceLandmarkDetector:
     def __init__(self):
