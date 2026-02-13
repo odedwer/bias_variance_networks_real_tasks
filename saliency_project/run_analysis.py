@@ -48,7 +48,7 @@ for model_chk_path in os.listdir(MODELS_FOLDER_PATH):
     model_name, model = create_model(model_chk_path, device)
     models[model_name] = model
 
-# detector = FaceLandmarkDetector()
+detector = FaceLandmarkDetector()
 records = []
 
 # --- PRECOMPUTE MASKS ---
