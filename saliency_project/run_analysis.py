@@ -9,9 +9,8 @@ from compute_saliency import compute_saliency
 # from face_parts.masks import build_face_masks, save_masks, load_masks
 from metrics import *
 from plots import visualize_saliency_row
-from face_recognition_model_comparison import FER2013Dataset
+from face_recognition_model_comparison import FER2013Dataset, SimpleCNN, test_transforms
 from ResNet import ResNet
-from face_recognition_model_comparison import SimpleCNN
 from utils import get_device
 
 SAL_DIR = Path("saliency_maps")
