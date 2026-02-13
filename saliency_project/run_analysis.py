@@ -99,9 +99,12 @@ for model_dir in SAL_DIR.iterdir():
     for sal_path in model_dir.glob("*.pt"):
         image_id = sal_path.stem
         
-
-        S = torch.load(sal_path)
+        #all goes to cpu for metric computation
+        S = torch.load(sal_path, map_location="cpu")
         masks = load_masks(mask_path)
+
+        S = S.cpu()
+        masks = {k: v.cpu() for k, v in masks.items()}
 
         rec = {
             "model": model_dir.name,
