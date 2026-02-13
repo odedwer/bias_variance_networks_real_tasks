@@ -20,7 +20,7 @@ MODELS_FOLDER_PATH = "models/models_for_analysis_resnet109/"
 
 dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=classes)
 
-def create_model(model_chk_path, device)
+def create_model(model_chk_path, device):
     model_chkpoints = os.listdir(os.path.join(MODELS_FOLDER_PATH, model_chk_path))
     model_chkpoints.sort(key=lambda x: os.path.getctime(os.path.join(MODELS_FOLDER_PATH, model_chk_path, x)))     # sort by creation date - all of the model's checkpoints
     if "SimpleCNN" in model_chk_path:
