@@ -62,7 +62,7 @@ for idx in range(len(dataset)):
     raw_img = Image.open(image_path).convert("RGB")
     raw_img = np.array(raw_img)
 
-    mask_path = MASK_DIR / f"{image_id}.pt"
+    mask_path = MASK_DIR / f"{idx}.pt"
     if mask_path.exists():
         continue
 
