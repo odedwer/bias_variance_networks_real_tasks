@@ -18,6 +18,7 @@ from plots import visualize_saliency_row
 from face_recognition_model_comparison import FER2013Dataset, SimpleCNN, test_transforms
 from ResNet import ResNet
 from utils import get_device
+from PIL import Image
 
 SAL_DIR = Path("saliency_maps")
 MASK_DIR = Path("saliency_project/face_parts/face_masks")
