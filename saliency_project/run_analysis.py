@@ -113,6 +113,7 @@ df.to_csv("saliency_metrics.csv", index=False)
 example_images = df["image"].unique()[:3]
 
 for image_id in example_images:
+    print(f"Visualizing image {image_id}")
     saliency_maps = []
     metrics = []
     model_names = []
