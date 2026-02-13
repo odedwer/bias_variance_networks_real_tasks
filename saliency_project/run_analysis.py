@@ -1,0 +1,97 @@
+# run_analysis.py
+
+import torch
+import pandas as pd
+from pathlib import Path
+
+from compute_saliency import compute_saliency
+from face_parts.landmarks import FaceLandmarkDetector
+from face_parts.masks import build_face_masks, save_masks, load_masks
+from metrics import *
+from plots import visualize_saliency_row
+from face_recognition_model_comparison import FER2013Dataset
+
+
+SAL_DIR = Path("saliency_maps")
+MASK_DIR = Path("face_masks")
+
+dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=classes)
+
+
+detector = FaceLandmarkDetector()
+records = []
+
+# --- PRECOMPUTE MASKS ---
+for image_id, image in dataset:
+    mask_path = MASK_DIR / f"{image_id}.pt"
+    if mask_path.exists():
+        continue
+
+    landmarks = detector.detect(image)
+    if landmarks is None:
+        continue
+
+    masks = build_face_masks(image, landmarks)
+    save_masks(masks, mask_path)
+
+# --- COMPUTE SALIENCY ---
+for model_name, model in models.items():
+    for image_id, image, label in dataset:
+        path = SAL_DIR / model_name / f"{image_id}.pt"
+        if path.exists():
+            continue
+
+        S = compute_saliency(model, image, label)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(S, path)
+
+# --- GLOBAL THRESHOLD ---
+all_vals = torch.cat([
+    torch.load(p).flatten()
+    for p in SAL_DIR.rglob("*.pt")
+])
+threshold = all_vals.quantile(0.9).item()
+
+# --- METRICS ---
+for model_dir in SAL_DIR.iterdir():
+    for sal_path in model_dir.glob("*.pt"):
+        image_id = sal_path.stem
+        mask_path = MASK_DIR / f"{image_id}.pt"
+        if not mask_path.exists():
+            continue
+
+        S = torch.load(sal_path)
+        masks = load_masks(mask_path)
+
+        rec = {
+            "model": model_dir.name,
+            "image": image_id,
+            "entropy": saliency_entropy(S),
+            "max_short_distance": max_short_distance(S, threshold),
+        }
+        rec.update(face_part_coverage(S, masks, threshold))
+        records.append(rec)
+
+df = pd.DataFrame(records)
+df.to_csv("saliency_metrics.csv", index=False)
+
+# --- VISUALIZATION ---
+example_images = df["image"].unique()[:3]
+
+for image_id in example_images:
+    saliency_maps = []
+    metrics = []
+    model_names = []
+
+    for model in list(models.keys())[:5]:
+        S = torch.load(SAL_DIR / model / f"{image_id}.pt")
+        saliency_maps.append(S)
+        metrics.append(
+            df[(df.image == image_id) & (df.model == model)].iloc[0].to_dict()
+        )
+        model_names.append(model)
+
+    image = image_lookup[image_id]
+    masks = load_masks(MASK_DIR / f"{image_id}.pt")
+
+    visualize_saliency_row(image, saliency_maps, masks, metrics, model_names)
