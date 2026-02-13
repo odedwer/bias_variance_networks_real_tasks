@@ -52,12 +52,20 @@ detector = FaceLandmarkDetector()
 records = []
 
 # --- PRECOMPUTE MASKS ---
-for image_id, (image, label) in enumerate(dataset):
+
+for idx in range(len(dataset)):
+
+    #convert tensor to PIL image for media pipe
+    image_path = dataset.images[idx]
+    image_id = Path(image_path).stem
+    raw_img = Image.open(image_path).convert("RGB")
+    raw_img = np.array(raw_img)
+
     mask_path = MASK_DIR / f"{image_id}.pt"
     if mask_path.exists():
         continue
 
-    landmarks = detector.detect(image.cpu().detach().numpy())
+    landmarks = detector.detect(raw_img)
     if landmarks is None:
         continue
 
