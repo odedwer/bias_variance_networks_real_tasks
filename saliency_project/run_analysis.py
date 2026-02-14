@@ -111,8 +111,8 @@ for model_dir in SAL_DIR.iterdir():
         rec = {
             "model": model_dir.name,
             "image": image_id,
-            #"entropy": saliency_entropy(S),
-            #"max_short_distance": max_short_distance(S, threshold),
+            "entropy": saliency_entropy(S),
+            "max_short_distance": max_short_distance(S, threshold),
             "mean_short_distance": mean_short_distance(S, threshold),
             "top_5%_concentration": top_k_concentration(S, k=0.05),
         }
@@ -125,7 +125,7 @@ df = pd.DataFrame(records)
 df.to_csv("saliency_metrics.csv", index=False)
 
 # --- VISUALIZATION ---
-example_images = df["image"].unique()[:3]
+example_images = df["image"].unique()[:30]
 
 for image_id in example_images:
     print(f"Visualizing image {image_id}")

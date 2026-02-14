@@ -42,7 +42,9 @@ def visualize_saliency_row(
         ax.set_title(
             f"{model_names[i]}\n"
             f"Entropy={m['entropy']:.2f}, Max Short Distance={m['max_short_distance']:.1f}\n"
-            f"E={m['eyes']:.2f} N={m['nose']:.2f} M={m['mouth']:.2f}"
+            f"Mean Short Distance={m['mean_short_distance']:.1f}, Top 5% Concentration={m['top_5%_concentration']:.2f}\n"
+            f"E={m['coverage_eyes']:.2f} N={m['coverage_nose']:.2f} M={m['coverage_mouth']:.2f}\n"
+            f"aE={m['attribution_eyes']:.2f} aN={m['attribution_nose']:.2f} aM={m['attribution_mouth']:.2f}"
             ,fontsize=9
         )
 
