@@ -114,7 +114,7 @@ for model_dir in SAL_DIR.iterdir():
             #"entropy": saliency_entropy(S),
             #"max_short_distance": max_short_distance(S, threshold),
             "mean_short_distance": mean_short_distance(S, threshold),
-            "top_k_concentration": top_k_concentration(S, k=0.05),
+            "top_5%_concentration": top_k_concentration(S, k=0.05),
         }
         
         rec.update(face_part_coverage(S, masks, threshold))
