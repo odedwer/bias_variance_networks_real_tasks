@@ -18,5 +18,5 @@ def compute_saliency(model, image, target_class):
     saliency = image.grad.abs().squeeze(0)   # (C,H,W)
     saliency = saliency.max(dim=0)[0]         # (H,W)
 
-    saliency = saliency / (saliency.max() + 1e-12)
+    saliency = saliency / (saliency.max() + 1e-12) #normalize to [0,1]
     return saliency.detach()

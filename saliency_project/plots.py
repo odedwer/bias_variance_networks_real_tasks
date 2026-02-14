@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def overlay_mask(ax, mask, color, alpha=0.3):
+def overlay_mask(ax, mask, color, alpha=0.4):
     colored = np.zeros((*mask.shape, 3))
     colored[..., :] = color
     ax.imshow(colored, alpha=alpha * mask)
@@ -28,15 +28,15 @@ def visualize_saliency_row(
 
     for i, ax in enumerate(axes):
         ax.imshow(image.cpu().detach().numpy(), cmap="gray")
-        ax.imshow(saliency_maps[i].cpu().detach().numpy(), alpha=0.75, cmap="hot", vmin=0, vmax=vmax,
+        ax.imshow(saliency_maps[i].cpu().detach().numpy(), alpha=0.75, cmap="hot", vmin=0, vmax=1,
                                interpolation='bicubic')
 
         # ax.imshow(image)
         # ax.imshow(saliency_maps[i].cpu(), cmap="hot", alpha=0.6, vmin=0, vmax=vmax)
 
-        overlay_mask(ax, masks["eyes"], color=[0, 0, 1])
-        overlay_mask(ax, masks["nose"], color=[0, 1, 0])
-        overlay_mask(ax, masks["mouth"], color=[1, 0, 0])
+        overlay_mask(ax, masks["eyes"], color=[1, 1, 1])
+        overlay_mask(ax, masks["nose"], color=[1, 1, 1])
+        overlay_mask(ax, masks["mouth"], color=[1, 1, 1])
 
         m = metrics[i]
         ax.set_title(
