@@ -62,7 +62,7 @@ def face_part_coverage(S, masks, threshold):
             coverage[region] = 0.0
         else:
             salient_in_region = (salient & mask).sum().item()
-            coverage[region] = salient_in_region / mask_size
+            coverage[f"coverage_{region}"] = salient_in_region / mask_size
     
     return coverage
 
@@ -86,6 +86,6 @@ def saliency_attribution(S, masks):
     attribution = {}
     for region, mask in masks.items():
         saliency_in_region = (S * mask).sum().item()
-        attribution[region] = saliency_in_region / total_saliency
+        attribution[f"attribution_{region}"] = saliency_in_region / total_saliency
     
     return attribution
