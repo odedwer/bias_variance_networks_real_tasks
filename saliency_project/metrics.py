@@ -7,8 +7,14 @@ from scipy.spatial import cKDTree
 
 def saliency_entropy(S):
     s = S.flatten()
-    s = s / (s.sum() + 1e-12)
-    return float(-(s * (s + 1e-12).log()).sum())
+    s = s / (s.sum() + 1e-12) #normalize pixels to sum to 1
+    H = -(s * (s + 1e-12).log()).sum()
+
+    # Normalize by log(N) where N is number of pixels, so that metric is in [0,1]
+    N = s.numel()
+    H_norm = H / np.log(N)
+
+    return H_norm.item()
 
 
 def max_short_distance(S, threshold):
