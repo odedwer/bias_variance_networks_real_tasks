@@ -26,7 +26,7 @@ def draw_mask_contour(ax, mask, color=[0, 0, 0], linewidth=2):
 
 def create_metrics_table(ax, metrics_list, model_names):
     """
-    Create a clean table with averaged metrics.
+    Create a clean transposed table with averaged metrics.
     """
     ax.axis('off')
     
@@ -49,40 +49,43 @@ def create_metrics_table(ax, metrics_list, model_names):
                         avg_metrics.get('attribution_nose', 0) + 
                         avg_metrics.get('attribution_mouth', 0))
     
-    # Format table data
+    # Format table data - TRANSPOSED (metrics as columns)
     table_data = [
         ['Metric', 'Average'],
         ['Entropy', f"{avg_metrics.get('normalized_entropy', 0):.2f}"],
-        ['Max Distance', f"{avg_metrics.get('max_short_distance', 0):.1f}"],
-        ['Mean Distance', f"{avg_metrics.get('mean_short_distance', 0):.1f}"],
-        ['Eyes Coverage', f"{avg_metrics.get('coverage_eyes', 0):.1%}"],
-        ['Nose Coverage', f"{avg_metrics.get('coverage_nose', 0):.1%}"],
-        ['Mouth Coverage', f"{avg_metrics.get('coverage_mouth', 0):.1%}"],
-        ['Total Coverage', f"{total_coverage:.1%}"],
-        ['Eyes Attr.', f"{avg_metrics.get('attribution_eyes', 0):.1%}"],
-        ['Nose Attr.', f"{avg_metrics.get('attribution_nose', 0):.1%}"],
-        ['Mouth Attr.', f"{avg_metrics.get('attribution_mouth', 0):.1%}"],
-        ['Total Attr.', f"{total_attribution:.1%}"],
+        ['Max Dist', f"{avg_metrics.get('max_short_distance', 0):.1f}"],
+        ['Mean Dist', f"{avg_metrics.get('mean_short_distance', 0):.1f}"],
+        ['Eyes Cov', f"{avg_metrics.get('coverage_eyes', 0):.1%}"],
+        ['Nose Cov', f"{avg_metrics.get('coverage_nose', 0):.1%}"],
+        ['Mouth Cov', f"{avg_metrics.get('coverage_mouth', 0):.1%}"],
+        ['Total Cov', f"{total_coverage:.1%}"],
+        ['Eyes Attr', f"{avg_metrics.get('attribution_eyes', 0):.1%}"],
+        ['Nose Attr', f"{avg_metrics.get('attribution_nose', 0):.1%}"],
+        ['Mouth Attr', f"{avg_metrics.get('attribution_mouth', 0):.1%}"],
+        ['Total Attr', f"{total_attribution:.1%}"],
     ]
     
-    table = ax.table(cellText=table_data, 
-                     cellLoc='left',
+    # Transpose: convert rows to columns
+    transposed_data = [list(row) for row in zip(*table_data)]
+    
+    table = ax.table(cellText=transposed_data, 
+                     cellLoc='center',
                      loc='center',
-                     colWidths=[0.6, 0.4])
+                     colWidths=[0.08] * len(table_data))
     
     table.auto_set_font_size(False)
-    table.set_fontsize(9)
-    table.scale(1, 2)
+    table.set_fontsize(8)
+    table.scale(1, 1.5)
     
-    # Style header row
-    for i in range(2):
+    # Style header column (first row after transpose)
+    for i in range(len(table_data)):
         table[(0, i)].set_facecolor('#40466e')
         table[(0, i)].set_text_props(weight='bold', color='white')
     
-    # Alternate row colors
-    for i in range(1, len(table_data)):
-        for j in range(2):
-            if i % 2 == 0:
+    # Alternate column colors
+    for i in range(len(transposed_data)):
+        for j in range(len(table_data)):
+            if j % 2 == 0 and i > 0:
                 table[(i, j)].set_facecolor('#f0f0f0')
 
 
@@ -95,18 +98,21 @@ def visualize_saliency_row(
     save_path=None
 ):
     """
-    One row:
-    metrics table | model1 | model2 | model3 | model4 | model5
+    Layout:
+    Row 1: model1 | model2 | model3 | model4 | model5
+    Row 2: metrics table (spanning all columns)
     """
     n = len(saliency_maps)
-    fig, axes = plt.subplots(1, n + 1, figsize=(4 * (n + 1), 4))
-
-    # First subplot: metrics table
-    create_metrics_table(axes[0], metrics, model_names)
-
-    # Remaining subplots: saliency visualizations
+    
+    # Create figure with 2 rows: images on top, table below
+    fig = plt.figure(figsize=(4 * n, 6))
+    
+    # Create grid: top row for images, bottom row for table
+    gs = fig.add_gridspec(2, n, height_ratios=[4, 1.5], hspace=0.3)
+    
+    # Top row: saliency visualizations
     for i in range(n):
-        ax = axes[i + 1]
+        ax = fig.add_subplot(gs[0, i])
         
         # Display image
         ax.imshow(image.cpu().detach().numpy(), cmap="gray")
@@ -118,14 +124,19 @@ def visualize_saliency_row(
 
         # Draw mask contours (black outlines)
         if masks:
-            draw_mask_contour(ax, masks["eyes"], color=[0, 0, 0], linewidth=1)
-            draw_mask_contour(ax, masks["nose"], color=[0, 0, 0], linewidth=1)
-            draw_mask_contour(ax, masks["mouth"], color=[0, 0, 0], linewidth=1)
+            draw_mask_contour(ax, masks["eyes"], color=[0, 0, 0], linewidth=2)
+            draw_mask_contour(ax, masks["nose"], color=[0, 0, 0], linewidth=2)
+            draw_mask_contour(ax, masks["mouth"], color=[0, 0, 0], linewidth=2)
 
-        # Simple title with just model name
-        ax.set_title(model_names[i], fontsize=10)
+        # Model name as title - wrap text to fit
+        title_text = model_names[i]
+        ax.set_title(title_text, fontsize=8, wrap=True)
 
         ax.axis("off")
+
+    # Bottom row: metrics table spanning all columns
+    ax_table = fig.add_subplot(gs[1, :])
+    create_metrics_table(ax_table, metrics, model_names)
 
     plt.tight_layout()
     
@@ -133,4 +144,4 @@ def visualize_saliency_row(
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         print(f"Saved to {save_path}")
     
-    plt.close()  # Close to free memory
+    plt.close()  # Close to free memory           ]
