@@ -22,6 +22,10 @@ from PIL import Image
 
 SAL_DIR = Path("saliency_maps")
 MASK_DIR = Path("saliency_project/face_parts/face_masks")
+# Create output directory for visualizations
+VIZ_DIR = Path("saliency_visualizations")
+VIZ_DIR.mkdir(exist_ok=True)
+
 MODELS_FOLDER_PATH = "models/models_for_analysis_resnet109/"
 classes=["fear","angry"]
 
@@ -111,10 +115,9 @@ for model_dir in SAL_DIR.iterdir():
         rec = {
             "model": model_dir.name,
             "image": image_id,
-            "entropy": saliency_entropy(S),
-            "max_short_distance": max_short_distance(S, threshold),
-            "mean_short_distance": mean_short_distance(S, threshold),
-            "top_5%_concentration": top_k_concentration(S, k=0.05),
+            "normalized_entropy": saliency_entropy(S),
+            "max_short_distance": maxmean_short_distance(S, threshold)[0],
+            "mean_short_distance": maxmean_short_distance(S, threshold)[1],
         }
         
         rec.update(face_part_coverage(S, masks, threshold))
@@ -125,7 +128,7 @@ df = pd.DataFrame(records)
 df.to_csv("saliency_metrics.csv", index=False)
 
 # --- VISUALIZATION ---
-example_images = df["image"].unique()[:30]
+example_images = df["image"].unique()[:50]
 
 for image_id in example_images:
     print(f"Visualizing image {image_id}")
@@ -144,4 +147,7 @@ for image_id in example_images:
     image = dataset[int(image_id)][0].permute(1, 2, 0)
     masks = load_masks(MASK_DIR / f"{image_id}.pt")
 
-    visualize_saliency_row(image, saliency_maps, masks, metrics, model_names) #fix
+    save_path = VIZ_DIR / f"saliency_{image_id}.png"
+    visualize_saliency_row(image, saliency_maps, masks, metrics, model_names, save_path=save_path)
+
+print(f"\nAll visualizations saved to {VIZ_DIR}/")

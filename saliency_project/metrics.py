@@ -17,7 +17,7 @@ def saliency_entropy(S):
     return H_norm.item()
 
 
-def max_short_distance(S, threshold):
+def maxmean_short_distance(S, threshold):
     coords = (S >= threshold).nonzero(as_tuple=False)
     if coords.shape[0] < 2:
         return 0.0
@@ -25,27 +25,17 @@ def max_short_distance(S, threshold):
     points = coords.cpu().numpy()
     tree = cKDTree(points)
     dists, _ = tree.query(points, k=2)
-    return float(dists[:, 1].max())
+    return float(dists[:, 1].max()), float(dists[:, 1].mean())
 
-def mean_short_distance(S, threshold):
-    coords = (S >= threshold).nonzero(as_tuple=False)
-    if coords.shape[0] < 2:
-        return 0.0
-
-    points = coords.cpu().numpy()
-    tree = cKDTree(points)
-    dists, _ = tree.query(points, k=2)
-    return float(dists[:, 1].mean())
-
-def top_k_concentration(S, k=0.1):
-    """
-    What fraction of total saliency is in top k% of pixels?
-    Higher = more local, Lower = more global
-    """
-    s = S.flatten()
-    n_top = int(len(s) * k)
-    top_vals = s.topk(n_top)[0]
-    return float(top_vals.sum() / (s.sum() + 1e-12))
+# def top_k_concentration(S, k=0.1):
+#     """
+#     What fraction of total saliency is in top k% of pixels?
+#     Higher = more local, Lower = more global
+#     """
+#     s = S.flatten()
+#     n_top = int(len(s) * k)
+#     top_vals = s.topk(n_top)[0]
+#     return float(top_vals.sum() / (s.sum() + 1e-12))
 
 def face_part_coverage(S, masks, threshold):
     """
