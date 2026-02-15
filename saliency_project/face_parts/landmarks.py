@@ -66,7 +66,12 @@ class FaceLandmarkDetector:
         # Same semantic groups as before
         left_eye = pts([33, 133, 160, 159, 158, 144, 145, 153])
         right_eye = pts([362, 263, 387, 386, 385, 373, 374, 380])
-        nose = pts([1, 2, 98, 327, 168, 197])
+        nose = pts([ 1,    # tip
+                    2, 5, 4,
+                    98, 97, 326, 327,   # sides
+                    168, 197,            # bridge
+                    195, 4, 45, 275      # bottom contour
+                    ])
         mouth = pts([61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291])
 
         return {
