@@ -17,7 +17,7 @@ def polygon_to_mask(points, h, w):
     cv2.fillPoly(mask, [pts], 1)
     return mask
 
-def dilate_mask(mask, pixels=2):
+def dilate_mask(mask, pixels=20):
     """
     Adds a margin around a binary mask using morphological dilation.
     """
