@@ -20,13 +20,13 @@ from ResNet import ResNet
 from utils import get_device
 from PIL import Image
 
-SAL_DIR = Path("saliency_maps")
+SAL_DIR = Path("saliency_maps/bias1")
 MASK_DIR = Path("saliency_project/face_parts/face_masks")
 # Create output directory for visualizations
-VIZ_DIR = Path("saliency_visualizations")
+VIZ_DIR = Path("saliency_visualizations/bias1")
 VIZ_DIR.mkdir(exist_ok=True)
 
-MODELS_FOLDER_PATH = "models/models_for_analysis_resnet109/"
+MODELS_FOLDER_PATH = "models/ResNet/bias=1.0/"
 classes=["fear","angry"]
 
 dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=classes)
