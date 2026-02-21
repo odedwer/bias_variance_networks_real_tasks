@@ -20,12 +20,12 @@ from ResNet import ResNet
 from utils import get_device
 from PIL import Image
 
-SAL_DIR = Path("saliency_maps/bias1")
+SAL_DIR = Path("saliency_maps/resnet_bias1")
 MASK_DIR = Path("saliency_project/face_parts/face_masks")
 # Create output directory for visualizations
-VIZ_DIR = Path("saliency_visualizations/bias1")
+VIZ_DIR = Path("saliency_visualizations/resnet_bias1")
 VIZ_DIR.mkdir(exist_ok=True)
-
+OUTPUT_FILE = "saliency_metrics_resnet_bias1.csv"
 MODELS_FOLDER_PATH = "models/ResNet/bias=1.0/"
 classes=["fear","angry"]
 
@@ -91,12 +91,12 @@ for model_name, model in models.items():
         torch.save(S, path)
 
 # --- GLOBAL THRESHOLD ---
-all_vals = torch.cat([
-    torch.load(p).flatten()
-    for p in SAL_DIR.rglob("*.pt")
-])
-threshold = all_vals.quantile(0.95).item()
-print(f"Global saliency threshold (95th percentile): {threshold:.4f}")
+# all_vals = torch.cat([
+#     torch.load(p).flatten()
+#     for p in SAL_DIR.rglob("*.pt")
+# ])
+# threshold = all_vals.quantile(0.95).item()
+# print(f"Global saliency threshold (95th percentile): {threshold:.4f}")
 
 # --- METRICS ---
 for model_dir in SAL_DIR.iterdir():
@@ -115,17 +115,24 @@ for model_dir in SAL_DIR.iterdir():
         rec = {
             "model": model_dir.name,
             "image": image_id,
-            "normalized_entropy": saliency_entropy(S),
-            "max_short_distance": maxmean_short_distance(S, threshold)[0],
-            "mean_short_distance": maxmean_short_distance(S, threshold)[1],
+            # "normalized_entropy": saliency_entropy(S),
+            # "max_short_distance": maxmean_short_distance(S, threshold)[0],
+            # "mean_short_distance": maxmean_short_distance(S, threshold)[1],
         }
+
+        THRESHOLDS = [0.3, 0.45, 0.6]
+        for threshold in THRESHOLDS:
+            
+            # Cluster-based metrics (all three methods)
+            rec.update(connected_component_analysis(S, threshold))
         
-        rec.update(face_part_coverage(S, masks, threshold))
-        rec.update(saliency_attribution(S, masks))
+        # rec.update(face_part_coverage(S, masks, threshold))
+        # rec.update(saliency_attribution(S, masks))
         records.append(rec)
 
 df = pd.DataFrame(records)
-df.to_csv("saliency_metrics.csv", index=False)
+
+df.to_csv(OUTPUT_FILE, index=False)
 
 # --- VISUALIZATION ---
 example_images = df["image"].unique()[:50]
