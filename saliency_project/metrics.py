@@ -302,5 +302,5 @@ def connected_component_analysis(S, threshold):
         f'cc_avg_cluster_size_{thresh_str}': float(avg_size),
         f'cc_cluster_size_ratio_{thresh_str}': float(size_ratio),
         f'num_salient_pixels_{thresh_str}': int(cluster_sizes.sum()),
-        f'salient_pixels_percent_{thresh_str}': float(cluster_sizes.sum() / S.size() * 100)
+        f'salient_pixels_percent_{thresh_str}': float(cluster_sizes.sum() /  S.numel() * 100)
     }
