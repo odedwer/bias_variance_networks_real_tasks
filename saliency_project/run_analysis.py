@@ -120,13 +120,13 @@ for model_dir in SAL_DIR.iterdir():
             # "mean_short_distance": maxmean_short_distance(S, threshold)[1],
         }
 
-        THRESHOLDS = [0.3, 0.45, 0.6]
+        THRESHOLDS = [0.2, 0.3, 0.4 ,0.5, 0.6]
         for threshold in THRESHOLDS:
             
             # Cluster-based metrics (all three methods)
             rec.update(connected_component_analysis(S, threshold))
         
-        rec.update(face_part_coverage(S, masks, threshold))
+        rec.update(face_part_coverage(S, masks, 0.3))
         rec.update(saliency_attribution(S, masks))
         records.append(rec)
 

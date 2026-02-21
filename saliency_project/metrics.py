@@ -256,7 +256,7 @@ def connected_component_analysis(S, threshold):
     binary_mask = (S >= threshold).cpu().numpy()
     labeled_array, num_components = connected_components(binary_mask)
     
-    thresh_str = f"thresh_{threshold:.1f}"
+    thresh_str = f"thresh_{threshold:.2f}"
     
     if num_components == 0:
         return {
