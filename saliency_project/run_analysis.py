@@ -126,8 +126,8 @@ for model_dir in SAL_DIR.iterdir():
             # Cluster-based metrics (all three methods)
             rec.update(connected_component_analysis(S, threshold))
         
-        # rec.update(face_part_coverage(S, masks, threshold))
-        # rec.update(saliency_attribution(S, masks))
+        rec.update(face_part_coverage(S, masks, threshold))
+        rec.update(saliency_attribution(S, masks))
         records.append(rec)
 
 df = pd.DataFrame(records)
