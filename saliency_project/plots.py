@@ -32,7 +32,7 @@ def create_metrics_table(ax, metrics_list, model_names):
     
     # Compute averages
     avg_metrics = {}
-    metric_keys = ['normalized_entropy', 'max_short_distance', 'mean_short_distance', 
+    metric_keys = [ 
                    'coverage_eyes', 'coverage_nose', 'coverage_mouth', 
                    'attribution_eyes', 'attribution_nose', 'attribution_mouth']
     
@@ -52,9 +52,6 @@ def create_metrics_table(ax, metrics_list, model_names):
     # Format table data - TRANSPOSED (metrics as columns)
     table_data = [
         ['Metric', 'Average'],
-        ['Entropy', f"{avg_metrics.get('normalized_entropy', 0):.2f}"],
-        ['Max Dist', f"{avg_metrics.get('max_short_distance', 0):.1f}"],
-        ['Mean Dist', f"{avg_metrics.get('mean_short_distance', 0):.1f}"],
         ['Eyes Cov', f"{avg_metrics.get('coverage_eyes', 0):.1%}"],
         ['Nose Cov', f"{avg_metrics.get('coverage_nose', 0):.1%}"],
         ['Mouth Cov', f"{avg_metrics.get('coverage_mouth', 0):.1%}"],
