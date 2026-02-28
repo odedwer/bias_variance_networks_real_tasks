@@ -55,10 +55,6 @@
         if show:
             plt.show()
 
-    def get_model_layer_names(self, epoch_idx):
-        return [l[0] for l in list(self.epochs[epoch_idx].named_modules()) if l[0] and (
-                "conv" in l[0] or "fc" in l[0] or "relu" in l[0])]
-
     @staticmethod
     def saliency_entropy(saliency_map, eps=1e-12):
         """Compute entropy of a saliency map treating it as a probability distribution.

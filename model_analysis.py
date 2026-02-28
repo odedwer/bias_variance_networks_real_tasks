@@ -114,6 +114,11 @@ class ModelAnalysis:
 
             self.accuracy.append(100 * correct / total)
 
+    def get_model_layer_names(self, epoch_idx):
+        """Get names of convolutional, fully connected, and ReLU layers for CKA analysis"""
+        return [l[0] for l in list(self.epochs[epoch_idx].named_modules()) if l[0] and (
+                "conv" in l[0] or "fc" in l[0] or "relu" in l[0])]
+
     @staticmethod
     def _norm(x):
         return (x - x.min()) / (x.max() - x.min())
@@ -193,13 +198,13 @@ for model_name in os.listdir(MODELS_FOLDER_PATH):
     model_analysis_obj.append(ModelAnalysis(model_name, device))
 
 # %%
-model_pairs = combinations_with_replacement(range(len(model_analysis_obj)), 2)
-for ma1_idx, ma2_idx in tqdm(list(model_pairs)):
-    ma1 = model_analysis_obj[ma1_idx]
-    ma2 = model_analysis_obj[ma2_idx]
-    for epoch_idx1 in range(len(ma1.epochs)):
-        for epoch_idx2 in range(len(ma2.epochs)):
-            results = cka_comparison(epoch_idx1, ma1, ma1.get_model_layer_names(epoch_idx1), epoch_idx2,
-                                     ma2, ma2.get_model_layer_names(epoch_idx2),
-                                     show=False, save=True)
+# Compare each model's last epoch (after training) with itself
+# This measures the stability of the model representation on the test dataset
+for ma in tqdm(model_analysis_obj):
+    epoch_idx = len(ma.epochs) - 1  # Last epoch (after training)
+    results = cka_comparison(
+        epoch_idx, ma, ma.get_model_layer_names(epoch_idx), 
+        epoch_idx, ma, ma.get_model_layer_names(epoch_idx),
+        show=False, save=True
+    )
 
