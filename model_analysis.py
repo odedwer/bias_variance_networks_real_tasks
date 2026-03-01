@@ -223,7 +223,7 @@ for ma in tqdm(model_analysis_obj):
     results = cka_comparison(
         epoch_idx, ma, ma.get_model_layer_names(epoch_idx),
         epoch_idx, ma, ma.get_model_layer_names(epoch_idx),
-        plot=False, show=False, save=True
+        plot=True, show=False, save=True
     )
 
     mean_off = cka_mean(results)
