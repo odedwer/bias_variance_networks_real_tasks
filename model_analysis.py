@@ -24,8 +24,8 @@ from collections import defaultdict
 from ResNet import ResNet
 from face_recognition_model_comparison import SimpleCNN, test_transforms, FER2013Dataset
 
-MODELS_FOLDER_PATH = "models/ResNet/bias=10.0"
-OUTPUT_CSV = "model_analysis_resnet10.csv"
+MODELS_FOLDER_PATH = "models/ResNet/bias=1.0"
+OUTPUT_CSV = "model_analysis_resnet1.csv"
 classes=["fear","angry"]
  
 class ModelAnalysis:
@@ -187,10 +187,10 @@ def cka_comparison(epoch_idx1: int, ma1: ModelAnalysis, ma_layers1: list[str], e
         plt.xlabel(ma2.model_name, fontsize=15, fontweight="bold")
         plt.ylabel(ma1.model_name, fontsize=15, fontweight="bold")
         plt.tight_layout()
-        os.makedirs(os.path.join("figures", "cka_resnet10"), exist_ok=True)
+        os.makedirs(os.path.join("figures", "cka_resnet1"), exist_ok=True)
         if save:
             plt.savefig(
-                os.path.join("figures", "cka_resnet10",
+                os.path.join("figures", "cka_resnet1",
                              f"{ma1.model_name}_{ma2.model_name}_epoch1_{ma1.epochs_names[epoch_idx1]}_epoch2_{ma2.epochs_names[epoch_idx2]}.pdf")
             )
         if show:
