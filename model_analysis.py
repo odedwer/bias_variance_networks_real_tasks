@@ -119,6 +119,15 @@ class ModelAnalysis:
         """Get names of convolutional, fully connected, and ReLU layers for CKA analysis"""
         return [l[0] for l in list(self.epochs[epoch_idx].named_modules()) if l[0] and (
                 "conv" in l[0] or "fc" in l[0] or "relu" in l[0])]
+    
+    def get_model_layer_names_resnet(self, epoch_idx):
+        """
+        Return only high-level ResNet blocks to avoid redundancy.
+        """
+        allowed = {"conv1", "layer1", "layer2", "layer3", "layer4", "fc"}
+        model = self.epochs[epoch_idx]
+
+        return [name for name, _ in model.named_modules() if name in allowed]
 
     @staticmethod
     def _norm(x):
@@ -221,8 +230,8 @@ for ma in tqdm(model_analysis_obj):
     epoch_idx = len(ma.epochs) - 1
 
     results = cka_comparison(
-        epoch_idx, ma, ma.get_model_layer_names(epoch_idx),
-        epoch_idx, ma, ma.get_model_layer_names(epoch_idx),
+        epoch_idx, ma, ma.get_model_layer_names_resnet(epoch_idx),
+        epoch_idx, ma, ma.get_model_layer_names_resnet(epoch_idx),
         plot=True, show=False, save=True
     )
 
