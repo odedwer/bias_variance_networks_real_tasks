@@ -24,7 +24,8 @@ from collections import defaultdict
 from ResNet import ResNet
 from face_recognition_model_comparison import SimpleCNN, test_transforms, FER2013Dataset
 
-MODELS_FOLDER_PATH = "models/models_for_analysis_seed83/resnet10"
+MODELS_FOLDER_PATH = "models/ResNet/bias=10.0"
+OUTPUT_CSV = "model_analysis_resnet10.csv"
 classes=["fear","angry"]
  
 class ModelAnalysis:
@@ -200,11 +201,38 @@ for model_name in os.listdir(MODELS_FOLDER_PATH):
 # %%
 # Compare each model's last epoch (after training) with itself
 # This measures the stability of the model representation on the test dataset
+def cka_mean(results):
+    """
+    Given CKA results dict, return:
+    - mean off-diagonal similarity
+    """
+    K = results['CKA']
+    L = K.shape[0]
+
+    # Off-diagonal similarity (excluding diagonal)
+    off_diag_vals = [K[i, j] for i in range(L) for j in range(L) if i != j]
+    mean_off_diag = np.mean(off_diag_vals)
+
+    return mean_off_diag
+
+cka_summary = []
+
 for ma in tqdm(model_analysis_obj):
-    epoch_idx = len(ma.epochs) - 1  # Last epoch (after training)
+    epoch_idx = len(ma.epochs) - 1
+
     results = cka_comparison(
-        epoch_idx, ma, ma.get_model_layer_names(epoch_idx), 
         epoch_idx, ma, ma.get_model_layer_names(epoch_idx),
-        show=False, save=True
+        epoch_idx, ma, ma.get_model_layer_names(epoch_idx),
+        plot=False, show=False, save=False
     )
+
+    mean_off = cka_mean(results)
+
+    cka_summary.append({
+        "model": ma.model_name,
+        "mean_off_diag": mean_off
+    })
+
+cka_df = pd.DataFrame(cka_summary)
+cka_df.to_csv(OUTPUT_CSV, index=False)
 
