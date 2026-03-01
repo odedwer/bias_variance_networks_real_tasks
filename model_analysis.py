@@ -178,10 +178,10 @@ def cka_comparison(epoch_idx1: int, ma1: ModelAnalysis, ma_layers1: list[str], e
         plt.xlabel(ma2.model_name, fontsize=15, fontweight="bold")
         plt.ylabel(ma1.model_name, fontsize=15, fontweight="bold")
         plt.tight_layout()
-        os.makedirs(os.path.join("figures", "cka"), exist_ok=True)
+        os.makedirs(os.path.join("figures", "cka_resnet10"), exist_ok=True)
         if save:
             plt.savefig(
-                os.path.join("figures", "cka",
+                os.path.join("figures", "cka_resnet10",
                              f"{ma1.model_name}_{ma2.model_name}_epoch1_{ma1.epochs_names[epoch_idx1]}_epoch2_{ma2.epochs_names[epoch_idx2]}.pdf")
             )
         if show:
@@ -223,7 +223,7 @@ for ma in tqdm(model_analysis_obj):
     results = cka_comparison(
         epoch_idx, ma, ma.get_model_layer_names(epoch_idx),
         epoch_idx, ma, ma.get_model_layer_names(epoch_idx),
-        plot=False, show=False, save=False
+        plot=False, show=False, save=True
     )
 
     mean_off = cka_mean(results)
