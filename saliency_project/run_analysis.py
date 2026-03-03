@@ -49,7 +49,7 @@ def create_model(model_chk_path, device):
 
 device = get_device()
 models = {}
-for model_chk_path in sorted(os.listdir(MODELS_FOLDER_PATH)):
+for model_chk_path in sorted(os.listdir(MODELS_FOLDER_PATH), key=lambda x: next((part.strip() for part in x.split(',') if 'seed' in part.lower()), x)):
     model_name, model = create_model(model_chk_path, device)
     models[model_name] = model
 
