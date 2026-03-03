@@ -20,13 +20,13 @@ from ResNet import ResNet
 from utils import get_device
 from PIL import Image
 
-SAL_DIR = Path("saliency_maps/simpleCNN_bias10")
+SAL_DIR = Path("saliency_maps/simpleCNN_bias1")
 MASK_DIR = Path("saliency_project/face_parts/face_masks")
 # Create output directory for visualizations
-VIZ_DIR = Path("saliency_visualizations/simpleCNN_bias10")
+VIZ_DIR = Path("saliency_visualizations/simpleCNN_bias1")
 VIZ_DIR.mkdir(exist_ok=True)
 OUTPUT_FILE = "saliency_metrics_simpleCNN_bias10.csv"
-MODELS_FOLDER_PATH = "models/SimpleCNN/bias=10.0/"
+MODELS_FOLDER_PATH = "models/SimpleCNN/bias=1.0/"
 classes=["fear","angry"]
 
 dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=classes)
