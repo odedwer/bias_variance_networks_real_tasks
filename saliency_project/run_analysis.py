@@ -49,13 +49,12 @@ def create_model(model_chk_path, device):
 
 device = get_device()
 models = {}
-for model_chk_path in os.listdir(MODELS_FOLDER_PATH):
+for model_chk_path in sorted(os.listdir(MODELS_FOLDER_PATH)):
     model_name, model = create_model(model_chk_path, device)
     models[model_name] = model
 
 detector = FaceLandmarkDetector()
 records = []
-
 # --- PRECOMPUTE MASKS ---
 
 for idx in range(len(dataset)):
