@@ -155,90 +155,6 @@ class BiasVarianceNetwork(nn.Module):
                 if name in self.freeze:
                     m.bias.requires_grad = False
 
-
-# Write alexnet with reinitialization
-
-class AlexNet(BiasVarianceNetwork):
-    def __init__(self, w_scale, b_scale, num_classes=10, freeze_bias: [bool, list] = False, **kwargs):
-        super(AlexNet, self).__init__(w_scale, b_scale, num_classes=num_classes)
-        self.layer1 = nn.Sequential()
-        self.layer1.add_module("l1_conv", nn.Conv2d(3, 96, kernel_size=11, stride=4, padding=0))
-        self.layer1.add_module("l1_batchnorm", nn.BatchNorm2d(96))
-        self.layer1.add_module("l1_ReLU", nn.ReLU())
-        self.layer1.add_module("l1_maxpool", nn.MaxPool2d(kernel_size=3, stride=2))
-
-        self.layer2 = nn.Sequential()
-        self.layer2.add_module("l2_conv", nn.Conv2d(96, 256, kernel_size=5, stride=1, padding=2))
-        self.layer2.add_module("l2_batchnorm", nn.BatchNorm2d(256))
-        self.layer2.add_module("l2_ReLU", nn.ReLU())
-        self.layer2.add_module("l2_maxpool", nn.MaxPool2d(kernel_size=3, stride=2))
-
-        self.layer3 = nn.Sequential()
-        self.layer3.add_module("l3_conv", nn.Conv2d(256, 384, kernel_size=3, stride=1, padding=1))
-        self.layer3.add_module("l3_batchnorm", nn.BatchNorm2d(384))
-        self.layer3.add_module("l3_ReLU", nn.ReLU())
-
-        self.layer4 = nn.Sequential()
-        self.layer4.add_module("l4_conv", nn.Conv2d(384, 384, kernel_size=3, stride=1, padding=1))
-        self.layer4.add_module("l4_batchnorm", nn.BatchNorm2d(384))
-        self.layer4.add_module("l4_ReLU", nn.ReLU())
-
-        self.layer5 = nn.Sequential()
-        self.layer5.add_module("l5_conv", nn.Conv2d(384, 256, kernel_size=3, stride=1, padding=1))
-        self.layer5.add_module("l5_batchnorm", nn.BatchNorm2d(256))
-        self.layer5.add_module("l5_ReLU", nn.ReLU())
-        self.layer5.add_module("l5_maxpool", nn.MaxPool2d(kernel_size=3, stride=2))
-
-        self.fc = nn.Sequential()
-        self.fc.add_module("fc_dropout", nn.Dropout(0.5))
-        self.fc.add_module("fc", nn.Linear(9216, 4096))
-        self.fc.add_module("fc_ReLU", nn.ReLU())
-
-        self.fc1 = nn.Sequential()
-        self.fc1.add_module("fc1_dropout", nn.Dropout(0.5))
-        self.fc1.add_module("fc1", nn.Linear(4096, 4096))
-        self.fc1.add_module("fc1_ReLU", nn.ReLU())
-
-        self.fc2 = nn.Sequential()
-        self.fc2.add_module("fc2", nn.Linear(4096, num_classes))
-        self.fc2.add_module("softmax", nn.Softmax(-1))
-
-        if freeze_bias:
-            conv_blocks = [self.layer1, self.layer2, self.layer3, self.layer4, self.layer5]
-            fc_layers = [self.fc, self.fc1, self.fc2]
-            if isinstance(freeze_bias, bool):
-                for block in conv_blocks:
-                    block[0].bias.requires_grad = False
-                    block[1].bias.requires_grad = False
-                for layer in fc_layers:
-                    layer[1].bias.requires_grad = False
-                self.fc[1].bias.requires_grad = False
-                self.fc1[1].bias.requires_grad = False
-                self.fc2[0].bias.requires_grad = False
-            else:
-                assert len(freeze_bias) == 8
-
-    def __getitem__(self, item):
-        for name, m in self.named_modules():
-            if item in name:
-                return m
-
-    def forward(self, x):
-        out = self.layer1(x)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
-        out = self.layer5(out)
-        out = out.reshape(out.size(0), -1)
-        out = self.fc(out)
-        out = self.fc1(out)
-        out = self.fc2(out)
-        return out
-
-    def get_out_activation(self):
-        return self.fc2
-
-
 class SimpleCNN(BiasVarianceNetwork):
     def __init__(self, name, w_scale, b_scale, n_blocks_increasing=3, n_block_decreasing=1,
                  conv_params=None, pool_params=None,should_batchnorm=True, **kwargs):
@@ -285,11 +201,6 @@ class SimpleCNN(BiasVarianceNetwork):
         self._block_count += 1
         block = Sequential()
         block.add_module(f"conv{self._block_count}", nn.Conv2d(in_channels, out_channels, **self.conv_params))
-        # w_in, h_in = 48, 48
-        # for _ in range(self._block_count-1):
-        #     w_in, h_in = calculate_conv_width_height(w_in, h_in, self.conv_params["kernel_size"],
-        #                                              self.conv_params["stride"], self.conv_params["padding"])
-        # block.add_module(f"batchnorm{self._block_count}", nn.LayerNorm([out_channels, w_in, h_in]))
         if self.batchnorm:
             block.add_module(f"batchnorm{self._block_count}", nn.BatchNorm2d(out_channels))
         block.add_module(f"activation{self._block_count}", nn.Tanh())

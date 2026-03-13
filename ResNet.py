@@ -89,7 +89,7 @@ class ResNet(nn.Module):
 
         self.in_channels = 64
         # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
-        # three layers. Here, kernel size is 7.
+        # three layers. Here, kernel size is 3.
         self.conv1 = nn.Conv2d(
             in_channels=img_channels,
             out_channels=self.in_channels,

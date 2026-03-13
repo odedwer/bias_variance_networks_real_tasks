@@ -1,0 +1,7 @@
+Metric,Comparison,p-value,Significant
+Cc Num Clusters,ResNet,1.5033301283005257e-12,***
+Cc Num Clusters,SimpleCNN,3.8376040960117266e-19,***
+Cc Avg Cluster Size,ResNet,3.235387428803947e-07,***
+Cc Avg Cluster Size,SimpleCNN,1.0325070122933618e-08,***
+Cc Cluster Size Ratio,ResNet,0.013145331681205514,*
+Cc Cluster Size Ratio,SimpleCNN,1.0798237963180042e-14,***

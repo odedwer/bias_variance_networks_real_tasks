@@ -14,7 +14,6 @@ import os
 from ResNet import ResNet
 from utils import get_summary_writer, plot_confusion_matrix
 
-
 class FER2013Dataset(Dataset):
     def __init__(self, img_dir, transform=None, classes=None):
         self.img_dir = img_dir
@@ -55,8 +54,6 @@ class FER2013Dataset(Dataset):
         return 1 / np.array(self._img_count)
 
 
-
-
 train_transforms = transforms.Compose([
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(10),  # random rotation ±10 degrees
@@ -89,9 +86,6 @@ train_loader = DataLoader(train_split, batch_size=64, shuffle=True, num_workers=
 val_loader = DataLoader(val_split, batch_size=64, shuffle=True, num_workers=4)
 test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=4)
 
-# vgg_train_loader = DataLoader(train_split, batch_size=16, shuffle=True, num_workers=4)
-# vgg_val_loader = DataLoader(val_split, batch_size=16, shuffle=True, num_workers=4)
-# vgg_test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers=4)
 
 # %%
 import torch.nn as nn
@@ -160,32 +154,7 @@ def init_module_bias(module, init_bias=0.0):
                 else:
                     nn.init.uniform_(child.bias, -init_bias, init_bias)
 
-
-def get_vgg(bn=True, init_bias=None):
-    # VGG-11 with BatchNorm (as an example VGG architecture)
-    if bn:
-        vgg_model = models.vgg11_bn(weights=None)
-    else:
-        vgg_model = models.vgg11(weights=None)  # weights=None -> no pretraining (torchvision 0.13+)
-    # Modify input and output layers for FER-2013:
-    vgg_model.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1,
-                                      bias=False)  # 1-channel input, no bias due to BN
-    vgg_model.classifier[6] = nn.Linear(vgg_model.classifier[6].in_features, 7)
-    if init_bias is not None:
-        init_module_bias(vgg_model, init_bias)
-    return vgg_model
-
-
 def get_resnet(bn=True, init_bias=None, num_classes=2):
-    # resnet_model = models.resnet18(weights=None)
-    # resnet_model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)  # 1-channel input
-    # resnet_model.fc = nn.Linear(resnet_model.fc.in_features, 7)
-    # # resnet_model is a ResNet-18 for 1-channel, 7 classes.
-    # if not bn:
-    #     remove_bn(resnet_model)
-    # if init_bias is not None:
-    #     init_module_bias(resnet_model, init_bias)
-    # return resnet_model
     resnet_model = ResNet(bn=bn, bias=init_bias is not None, num_classes=num_classes)
     if init_bias is not None:
         init_module_bias(resnet_model, init_bias)
@@ -202,12 +171,11 @@ def main():
     lr = 1e-3
     num_epochs = 70
     bn_list = [False]
-    init_bias_list = [0.0]#10.0, None, 1.0]#,[10.0, 5.0, 1.0, 0.5, 0.1]#
-    seeds =  [42, #[0, 1, 143, 98,  
+    init_bias_list = [0.0, 10.0, None, 1.0]
+    seeds =  [42, 0, 1, 143, 98,  
              11, 7, 13, 21, 27, 31, 37, 43, 49, 53, 59,
              61, 67, 71, 73, 79, 83, 89, 97, 101, 103,
              107, 109, 113, 127]
-    #Done for none - 11-103
     model_list, titles, params = get_models(lr, num_epochs, bn_list, init_bias_list, seeds=seeds, resnet=True, simple=True)
     train_models(model_list, titles, params, device, lr, num_epochs)
 
@@ -233,16 +201,11 @@ def get_models(lr, num_epochs, bn_list, init_bias_list, seeds=[42], resnet=True,
             model_list.append(SimpleCNN(bn=comb[0], init_bias=comb[1], num_classes=2))
             params.append({"model": "SimpleCNN", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
             titles.append(f"SimpleCNN, BN={comb[0]}, Bias={comb[1]}, seed={comb[2]}")
-        #torch.manual_seed(42)
-        # model_list.append(get_vgg(bn=comb[0], init_bias=comb[1]))
-        # params.append({"model": "VGG11" , "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
         if resnet:
             set_deterministic(comb[2])
             model_list.append(get_resnet(bn=comb[0], init_bias=comb[1], num_classes=2))
             params.append({"model": "resnet18", "bn": comb[0], "init_bias": comb[1], "lr": lr, "num_epochs": num_epochs})
             titles.append(f"ResNet, BN={comb[0]}, Bias={comb[1]}, seed={comb[2]}, cuda_seed")
-        # titles.extend([f"SimpleCNN, BN={comb[0]}, Bias={comb[1]}",  # f"VGG, BN={comb[0]}, Bias={comb[1]}",
-        #                f"ResNet, BN={comb[0]}, Bias={comb[1]}"])
     return model_list, titles, params
 
 
@@ -269,9 +232,6 @@ def train_models(model_list, titles, params, device, lr, num_epochs):
                 with torch.autocast(device_type="cuda"):
                     output = model(images)
                     loss = criterion(output, labels)
-                # outputs = model(images)
-                # loss = criterion(outputs, labels)
-                # Backward and optimize
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
