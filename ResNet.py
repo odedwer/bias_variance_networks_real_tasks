@@ -1,8 +1,12 @@
 """
-Builds ResNet18 from scratch using PyTorch.
-This does not build generalized blocks for all ResNets, just for ResNet18.
-Paper => Deep Residual Learning for Image Recognition.
-Link => https://arxiv.org/pdf/1512.03385v1.pdf
+ResNet18 implementation from scratch for facial expression recognition.
+
+Implements:
+- BasicBlock: Residual block with optional batch normalization
+- ResNet: ResNet18 architecture with customizable batch norm and bias
+
+References:
+- Deep Residual Learning for Image Recognition (https://arxiv.org/pdf/1512.03385v1.pdf)
 """
 
 import torch.nn as nn
@@ -13,6 +17,20 @@ from typing import Type
 
 
 class BasicBlock(nn.Module):
+    """
+    Residual block for ResNet18.
+    
+    Performs two convolutions with optional batch normalization and a skip connection.
+    
+    Args:
+        in_channels (int): Number of input channels
+        out_channels (int): Number of output channels
+        stride (int): Stride for first convolution (default: 1)
+        expansion (int): Channel expansion factor (default: 1 for ResNet18)
+        downsample (nn.Module, optional): Module to adjust skip connection dimensions
+        bias (bool): Whether to use bias in convolutions (default: False)
+        bn (bool): Whether to use batch normalization (default: True)
+    """
     def __init__(
             self,
             in_channels: int,
@@ -68,6 +86,20 @@ class BasicBlock(nn.Module):
 
 
 class ResNet(nn.Module):
+    """
+    ResNet18 architecture for image classification.
+    
+    Implements ResNet18 with support for disabling batch normalization and 
+    customizing bias initialization for variance study.
+    
+    Args:
+        img_channels (int): Number of input image channels (default: 1 for grayscale)
+        num_layers (int): Number of layers (currently only 18 supported)
+        block (Type): Residual block class (default: BasicBlock)
+        num_classes (int): Number of output classes (default: 2)
+        bias (bool): Whether to use bias in convolutions (default: False)
+        bn (bool): Whether to use batch normalization (default: True)
+    """
     def __init__(
             self,
             img_channels: int=1,

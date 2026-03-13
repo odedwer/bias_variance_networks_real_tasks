@@ -1,4 +1,12 @@
 # visualization/plots.py
+"""
+Plotting and visualization utilities for saliency analysis.
+
+Provides functions for:
+- Drawing mask contours
+- Creating metrics tables
+- Visualizing saliency maps and analysis results
+"""
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,6 +17,12 @@ from matplotlib import patches
 def draw_mask_contour(ax, mask, color=[0, 0, 0], linewidth=2):
     """
     Draw contour around mask regions instead of overlay.
+    
+    Args:
+        ax: Matplotlib axis
+        mask (torch.Tensor or ndarray): Binary mask
+        color (list): RGB color for contour [0-1]
+        linewidth (int): Line width for contour
     """
     from scipy.ndimage import binary_dilation, binary_erosion
     
@@ -26,10 +40,17 @@ def draw_mask_contour(ax, mask, color=[0, 0, 0], linewidth=2):
 import re
 def extract_seed_from_name(model_name):
     """
-    Extract seed number from model name.
+    Extract seed number from model name string.
+    
     Examples:
-    'ResNet, BN=False, Bias=1.0, seed=109' -> 'seed=109'
-    '19-11-2025_19-48-17_ResNet, BN=False, Bias=1.0, seed=109...' -> 'seed=109'
+        'ResNet, BN=False, Bias=1.0, seed=109' -> 'seed=109'
+        '19-11-2025_19-48-17_ResNet, BN=False, Bias=1.0, seed=109...' -> 'seed=109'
+    
+    Args:
+        model_name (str): Model name string
+        
+    Returns:
+        str: Extracted seed or original name if not found
     """
     match = re.search(r'seed=(\d+)', model_name)
     if match:
@@ -39,6 +60,11 @@ def extract_seed_from_name(model_name):
 def create_metrics_table(ax, metrics_list, model_names):
     """
     Create a clean transposed table with averaged metrics.
+    
+    Args:
+        ax: Matplotlib axis
+        metrics_list (list): List of metric dictionaries
+        model_names (list): List of model name strings
     """
     ax.axis('off')
     

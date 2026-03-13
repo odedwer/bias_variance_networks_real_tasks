@@ -1,4 +1,12 @@
 # metrics/saliency_metrics.py
+"""
+Saliency map analysis and feature attribution metrics.
+
+Provides functions for:
+- Computing saliency entropy (concentration of attention)
+- Cluster analysis (MDL, DBSCAN, connected components)
+- Face part coverage and attribution analysis
+"""
 
 import torch
 import numpy as np

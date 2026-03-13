@@ -1,4 +1,10 @@
 # run_analysis.py
+"""
+Main analysis script for computing and visualizing saliency metrics.
+
+Processes trained models, computes saliency maps, extracts face landmarks,
+and calculates metrics for saliency distribution analysis.
+"""
 
 import torch
 import pandas as pd

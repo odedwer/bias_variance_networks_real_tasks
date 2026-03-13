@@ -1,3 +1,13 @@
+"""
+Training utilities for neural networks.
+
+Provides helper functions for:
+- Device management and training setup
+- Experiment logging and file management
+- Model training and validation loops
+- Visualization of training metrics
+"""
+
 import datetime
 import re
 
@@ -12,12 +22,14 @@ import matplotlib.pyplot as plt
 
 
 def get_device():
+    """Get available device (CUDA if available, else CPU)."""
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print("Using device: " + str(device))
     return device
 
 
 def make_filename_safe(filename):
+    """Replace special characters with underscores to create filesystem-safe names."""
     # Replace any character that is not alphanumeric, a space, or a hyphen with an underscore
     safe_filename = re.sub(r'[^.a-zA-Z0-9\s-]+', '_', filename)
     # Replace spaces with underscores
@@ -26,6 +38,17 @@ def make_filename_safe(filename):
 
 
 def get_summary_writer(model_name, param, classes=None):
+    """
+    Create TensorBoard SummaryWriter and experiment directory.
+    
+    Args:
+        model_name (str): Name of the model
+        param (pd.Series): Training parameters to save
+        classes (list, optional): List of class names
+        
+    Returns:
+        tuple: (SummaryWriter, experiment_name)
+    """
     timestamp = str(datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S"))
     # save parameters to a file in the experiment directory
     classes_string = "-".join(classes) if classes else ""
@@ -38,7 +61,20 @@ def get_summary_writer(model_name, param, classes=None):
 
 
 def init_training(device, model, param, criterion, optimizer, optimizer_kwargs):
-    m = model(**param.to_dict())
+    """
+    Initialize model, optimizer, criterion and apply custom reinitialization.
+    
+    Args:
+        device: torch device
+        model: Model class (not instantiated)
+        param (pd.Series): Training parameters including custom bias/weight scaling
+        criterion: Loss function class
+        optimizer: Optimizer class
+        optimizer_kwargs (dict): Additional kwargs for optimizer
+        
+    Returns:
+        tuple: (model, criterion, optimizer)
+    """
     m.to(device)
     optimizer = optimizer(filter(lambda p: p.requires_grad, m.parameters()), lr=param.get('lr', 1e-4),
                           **optimizer_kwargs)
@@ -53,22 +89,45 @@ def init_training(device, model, param, criterion, optimizer, optimizer_kwargs):
 
 
 def train_epoch(criterion, epoch, i, model, optimizer, train_loader, writer):
-    loss = None
-    for i, (images, labels) in enumerate(train_loader):
-        # Forward pass
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        writer.add_scalar("Loss/train", loss, epoch)
+    """
+    Execute one training epoch.
+    
+    Args:
+        criterion: Loss function
+        epoch (int): Current epoch number
+        i (int): Step counter
+        model: Neural network model
+        optimizer: Optimizer
+        train_loader: DataLoader for training data
+        writer: TensorBoard SummaryWriter
+        
+    Returns:
+        tuple: (final_step_count, final_loss)
+    """
+    # Forward pass
+    outputs = model(images)
+    loss = criterion(outputs, labels)
+    writer.add_scalar("Loss/train", loss, epoch)
 
-        # Backward and optimize
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    # Backward and optimize
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
     return i, loss
 
 
 def plot_confusion_matrix(y_true, y_pred, dataset, writer, epoch, extra_name=""):
-    labels = list(range(len(dataset.unique_labels)))
+    """
+    Plot and log confusion matrix to TensorBoard.
+    
+    Args:
+        y_true (array-like): True labels
+        y_pred (array-like): Predicted labels
+        dataset: Dataset object with label mappings
+        writer: TensorBoard SummaryWriter
+        epoch (int): Epoch number for logging
+        extra_name (str): Prefix for the figure name
+    """
     cm = confusion_matrix(y_true, y_pred, labels=labels)
     cm = cm.astype('float') / cm.sum(axis=0, keepdims=True)
     df_cm = pd.DataFrame(cm, index=labels, columns=labels)
@@ -82,6 +141,18 @@ def plot_confusion_matrix(y_true, y_pred, dataset, writer, epoch, extra_name="")
 
 
 def epoch_validation(criterion, epoch, model, valid_loader, writer):
+    """
+    Validate model on validation set and log metrics.
+    
+    Logs accuracy, bias histograms, and confusion matrices to TensorBoard.
+    
+    Args:
+        criterion: Loss function
+        epoch (int): Epoch number
+        model: Neural network model
+        valid_loader: Validation DataLoader
+        writer: TensorBoard SummaryWriter
+    """
     with torch.no_grad():
         for name, m in model.named_modules():
             if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d) or isinstance(m, nn.BatchNorm2d):
@@ -107,6 +178,15 @@ def epoch_validation(criterion, epoch, model, valid_loader, writer):
 
 
 def test_model(device, model, test_loader, writer):
+    """
+    Evaluate model on test set and log metrics.
+    
+    Args:
+        device: torch device
+        model: Neural network model
+        test_loader: Test DataLoader
+        writer: TensorBoard SummaryWriter
+    """
     with torch.no_grad():
         correct = 0
         total = 0
@@ -128,6 +208,22 @@ def test_model(device, model, test_loader, writer):
 
 def end_to_end_model_train(i, param, model, criterion, optimizer, train_loader, valid_loader, test_loader,
                            optimizer_kwargs=None):
+    """
+    Complete training pipeline: initialize, train, validate, and test model.
+    
+    Saves model checkpoints and logs all metrics to TensorBoard.
+    
+    Args:
+        i (int): Step counter
+        param (pd.Series): Training parameters
+        model: Model class
+        criterion: Loss function class
+        optimizer: Optimizer class
+        train_loader: Training DataLoader
+        valid_loader: Validation DataLoader
+        test_loader: Test DataLoader
+        optimizer_kwargs (dict, optional): Additional optimizer arguments
+    """
     device = get_device()
     model, criterion, optimizer = init_training(device, model, param, criterion, optimizer, (optimizer_kwargs or {}))
     writer, exp_name = get_summary_writer(model.__dict__.get("name", "network"), param)
@@ -154,6 +250,19 @@ def end_to_end_model_train(i, param, model, criterion, optimizer, train_loader, 
 
 
 def calculate_conv_width_height(width_in, height_in, kernel_size, stride, padding):
+    """
+    Calculate output spatial dimensions after convolution and pooling.
+    
+    Args:
+        width_in (int): Input width
+        height_in (int): Input height
+        kernel_size (int): Convolution kernel size
+        stride (int): Convolution stride
+        padding (int): Convolution padding
+        
+    Returns:
+        tuple: (output_width, output_height)
+    """
     width_out, height_out = ((width_in + 2 * padding - kernel_size) // stride) + 1, (
             (height_in + 2 * padding - kernel_size) // stride) + 1
     width_out = ((width_out - kernel_size) // 2) + 1
