@@ -122,17 +122,38 @@ def _calculate_min_inter_cluster_distance(coords, labels, num_clusters):
     if num_clusters < 2:
         return 0.0, 0.0
     
+    # Pre-compute cluster membership once
+    clusters = [np.where(labels == i)[0] for i in range(num_clusters)]
     min_distances = []
     
-    for i in range(num_clusters):
-        for j in range(i + 1, num_clusters):
-            cluster_i = coords[labels == i]
-            cluster_j = coords[labels == j]
+    # Use KDTree for efficient nearest neighbor search
+    if len(coords) > 50:  # Use spatial indexing for larger datasets
+        tree = cKDTree(coords)
+        
+        for i in range(num_clusters):
+            indices_i = clusters[i]
+            if len(indices_i) == 0:
+                continue
             
-            if len(cluster_i) > 0 and len(cluster_j) > 0:
-                distances = cdist(cluster_i, cluster_j, metric='euclidean')
-                min_dist = distances.min()
+            for j in range(i + 1, num_clusters):
+                indices_j = clusters[j]
+                if len(indices_j) == 0:
+                    continue
+                
+                # Query minimum distance from cluster i to cluster j
+                dists, _ = tree.query(coords[indices_i], k=1)
+                min_dist = dists.min()
                 min_distances.append(min_dist)
+    else:
+        # Fallback for small datasets
+        for i in range(num_clusters):
+            for j in range(i + 1, num_clusters):
+                cluster_i = coords[clusters[i]]
+                cluster_j = coords[clusters[j]]
+                
+                if len(cluster_i) > 0 and len(cluster_j) > 0:
+                    distances = cdist(cluster_i, cluster_j, metric='euclidean')
+                    min_distances.append(distances.min())
     
     if min_distances:
         return np.mean(min_distances), np.max(min_distances)
@@ -321,10 +342,10 @@ def connected_component_analysis(S, threshold):
         coords = np.argwhere(component_mask)
         
         if len(coords) > 0:
-            cluster_centers.append(coords.mean(axis=0))
+            #cluster_centers.append(coords.mean(axis=0))
             cluster_sizes.append(len(coords))
     
-    cluster_centers = np.array(cluster_centers)
+    #cluster_centers = np.array(cluster_centers)
     cluster_sizes = np.array(cluster_sizes)
     
     # Inter-cluster distances (minimal point-to-point)
@@ -347,7 +368,7 @@ def connected_component_analysis(S, threshold):
         f'cc_avg_inter_cluster_distance_{thresh_str}': float(avg_distance),
         f'cc_max_inter_cluster_distance_{thresh_str}': float(max_distance),
         f'cc_avg_cluster_size_{thresh_str}': float(avg_size),
-        f'cc_cluster_size_ratio_{thresh_str}': float(size_ratio),
-        f'num_salient_pixels_{thresh_str}': int(cluster_sizes.sum()),
-        f'salient_pixels_percent_{thresh_str}': float(cluster_sizes.sum() /  S.numel() * 100)
+        # f'cc_cluster_size_ratio_{thresh_str}': float(size_ratio),
+        # f'num_salient_pixels_{thresh_str}': int(cluster_sizes.sum()),
+        # f'salient_pixels_percent_{thresh_str}': float(cluster_sizes.sum() /  S.numel() * 100)
     }

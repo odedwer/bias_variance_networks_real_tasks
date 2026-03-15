@@ -137,7 +137,7 @@ for model_dir in SAL_DIR.iterdir():
             "normalized_entropy": saliency_entropy(S),
         }
 
-        THRESHOLDS = [0.2, 0.3, 0.4 ,0.5, 0.6]
+        THRESHOLDS = [0.3]
         for threshold in THRESHOLDS:
             
             # Cluster-based metrics (all three methods)
@@ -153,26 +153,26 @@ df = pd.DataFrame(records)
 df.to_csv(OUTPUT_FILE, index=False)
 
 # --- VISUALIZATION ---
-example_images = df["image"].unique()[:50]
+# example_images = df["image"].unique()[:50]
 
-for image_id in example_images:
-    print(f"Visualizing image {image_id}")
-    saliency_maps = []
-    metrics = []
-    model_names = []
+# for image_id in example_images:
+#     print(f"Visualizing image {image_id}")
+#     saliency_maps = []
+#     metrics = []
+#     model_names = []
 
-    for model in list(models.keys())[:5]:
-        S = torch.load(SAL_DIR / model / f"{image_id}.pt")
-        saliency_maps.append(S)
-        metrics.append(
-            df[(df.image == image_id) & (df.model == model)].iloc[0].to_dict()
-        )
-        model_names.append(model)
+#     for model in list(models.keys())[:5]:
+#         S = torch.load(SAL_DIR / model / f"{image_id}.pt")
+#         saliency_maps.append(S)
+#         metrics.append(
+#             df[(df.image == image_id) & (df.model == model)].iloc[0].to_dict()
+#         )
+#         model_names.append(model)
 
-    image = dataset[int(image_id)][0].permute(1, 2, 0)
-    masks = load_masks(MASK_DIR / f"{image_id}.pt")
+#     image = dataset[int(image_id)][0].permute(1, 2, 0)
+#     masks = load_masks(MASK_DIR / f"{image_id}.pt")
 
-    save_path = VIZ_DIR / f"saliency_{image_id}.png"
-    visualize_saliency_row(image, saliency_maps, masks, metrics, model_names, save_path=save_path)
+#     save_path = VIZ_DIR / f"saliency_{image_id}.png"
+#     visualize_saliency_row(image, saliency_maps, masks, metrics, model_names, save_path=save_path)
 
-print(f"\nAll visualizations saved to {VIZ_DIR}/")
+# print(f"\nAll visualizations saved to {VIZ_DIR}/")
