@@ -94,12 +94,41 @@ def saliency_attribution(S, masks):
     
     return attribution
 
-# metrics.py
-
 from sklearn.cluster import AgglomerativeClustering, DBSCAN
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import pdist, squareform, cdist
 from scipy.ndimage import label as connected_components
 import numpy as np
+
+def _calculate_min_inter_cluster_distance(coords, labels, num_clusters):
+    """
+    Calculate minimum distance between clusters (closest point-to-point distance).
+    
+    Args:
+        coords: Array of shape (N, 2) with coordinates
+        labels: Cluster labels for each point
+        num_clusters: Number of clusters
+        
+    Returns:
+        tuple: (avg_min_distance, max_min_distance)
+    """
+    if num_clusters < 2:
+        return 0.0, 0.0
+    
+    min_distances = []
+    
+    for i in range(num_clusters):
+        for j in range(i + 1, num_clusters):
+            cluster_i = coords[labels == i]
+            cluster_j = coords[labels == j]
+            
+            if len(cluster_i) > 0 and len(cluster_j) > 0:
+                distances = cdist(cluster_i, cluster_j, metric='euclidean')
+                min_dist = distances.min()
+                min_distances.append(min_dist)
+    
+    if min_distances:
+        return np.mean(min_distances), np.max(min_distances)
+    return 0.0, 0.0
 
 def mdl_cluster_analysis(S, threshold, max_clusters=10):
     """
@@ -290,11 +319,13 @@ def connected_component_analysis(S, threshold):
     cluster_centers = np.array(cluster_centers)
     cluster_sizes = np.array(cluster_sizes)
     
-    # Inter-cluster distances
-    if len(cluster_centers) > 1:
-        distances = pdist(cluster_centers, metric='euclidean')
-        avg_distance = distances.mean()
-        max_distance = distances.max()
+    # Inter-cluster distances (minimal point-to-point)
+    if num_components > 1:
+        # Create labels array for connected components
+        component_labels = labeled_array[binary_mask]
+        all_coords = np.argwhere(binary_mask)
+        avg_distance, max_distance = _calculate_min_inter_cluster_distance(
+            all_coords, component_labels - 1, num_components)
     else:
         avg_distance = 0.0
         max_distance = 0.0
