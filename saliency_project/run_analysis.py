@@ -12,6 +12,7 @@ from pathlib import Path
 import sys
 from pathlib import Path
 import os
+import argparse
 
 # Add parent directory to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -26,13 +27,24 @@ from ResNet import ResNet
 from utils import get_device
 from PIL import Image
 
-SAL_DIR = Path("saliency_maps/resnet_bias10")
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description='Compute and visualize saliency metrics for neural network models')
+parser.add_argument('--experiment-name', type=str, default='resnet_bias10',
+                    help='Experiment name used in directory and file names (default: resnet_bias10)')
+parser.add_argument('--models-folder', type=str, default='models/ResNet/bias=10.0/',
+                    help='Path to models folder (default: models/ResNet/bias=10.0/)')
+args = parser.parse_args()
+
+experiment_name = args.experiment_name
+models_folder = args.models_folder
+
+SAL_DIR = Path(f"saliency_maps/{experiment_name}")
 MASK_DIR = Path("saliency_project/face_parts/face_masks")
 # Create output directory for visualizations
-VIZ_DIR = Path("saliency_visualizations/resnet_bias10")
+VIZ_DIR = Path(f"saliency_visualizations/{experiment_name}")
 VIZ_DIR.mkdir(exist_ok=True)
-OUTPUT_FILE = "saliency_metrics_resnet_bias10.csv"
-MODELS_FOLDER_PATH = "models/ResNet/bias=10.0/"
+OUTPUT_FILE = f"saliency_metrics_{experiment_name}.csv"
+MODELS_FOLDER_PATH = models_folder
 classes=["fear","angry"]
 
 dataset = FER2013Dataset('data/face-expression/test', transform=test_transforms, classes=classes)
