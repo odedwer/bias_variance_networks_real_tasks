@@ -141,8 +141,8 @@ for model_dir in SAL_DIR.iterdir():
         for threshold in THRESHOLDS:
             
             # Cluster-based metrics (all three methods)
-            #rec.update(connected_component_analysis(S, threshold))
-            rec.update(maxmean_short_distance(S, threshold))
+            rec.update(connected_component_analysis(S, threshold))
+            #rec.update(maxmean_short_distance(S, threshold))
         
         #rec.update(face_part_coverage(S, masks, 0.3))
         #rec.update(saliency_attribution(S, masks))
