@@ -28,12 +28,20 @@ def saliency_entropy(S):
 def maxmean_short_distance(S, threshold):
     coords = (S >= threshold).nonzero(as_tuple=False)
     if coords.shape[0] < 2:
-        return 0.0
+        thresh_str = f"thresh_{threshold:.2f}"
+        return {
+            f"max_short_distance_{thresh_str}": 0.0,
+            f"mean_short_distance_{thresh_str}": 0.0
+        }
 
     points = coords.cpu().numpy()
     tree = cKDTree(points)
     dists, _ = tree.query(points, k=2)
-    return float(dists[:, 1].max()), float(dists[:, 1].mean())
+    thresh_str = f"thresh_{threshold:.2f}"
+    return {
+        f"max_short_distance_{thresh_str}": float(dists[:, 1].max()),
+        f"mean_short_distance_{thresh_str}": float(dists[:, 1].mean())
+    }
 
 def top_k_concentration(S, k=0.1):
     """

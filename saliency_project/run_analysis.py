@@ -135,8 +135,6 @@ for model_dir in SAL_DIR.iterdir():
             "model": model_dir.name,
             "image": image_id,
             "normalized_entropy": saliency_entropy(S),
-            "max_short_distance": maxmean_short_distance(S, threshold)[0],
-            "mean_short_distance": maxmean_short_distance(S, threshold)[1],
         }
 
         THRESHOLDS = [0.2, 0.3, 0.4 ,0.5, 0.6]
@@ -144,6 +142,7 @@ for model_dir in SAL_DIR.iterdir():
             
             # Cluster-based metrics (all three methods)
             rec.update(connected_component_analysis(S, threshold))
+            rec.update(maxmean_short_distance(S, threshold))
         
         #rec.update(face_part_coverage(S, masks, 0.3))
         #rec.update(saliency_attribution(S, masks))
