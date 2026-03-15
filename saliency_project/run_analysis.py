@@ -26,6 +26,7 @@ from face_recognition_model_comparison import FER2013Dataset, SimpleCNN, test_tr
 from ResNet import ResNet
 from utils import get_device
 from PIL import Image
+from datetime import datetime
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Compute and visualize saliency metrics for neural network models')
@@ -43,7 +44,8 @@ MASK_DIR = Path("saliency_project/face_parts/face_masks")
 # Create output directory for visualizations
 VIZ_DIR = Path(f"saliency_visualizations/{experiment_name}")
 VIZ_DIR.mkdir(exist_ok=True)
-OUTPUT_FILE = f"saliency_metrics_{experiment_name}.csv"
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+OUTPUT_FILE = f"saliency_metrics_{experiment_name}_{timestamp}.csv"
 MODELS_FOLDER_PATH = models_folder
 classes=["fear","angry"]
 
