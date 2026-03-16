@@ -131,6 +131,8 @@ def _calculate_min_inter_cluster_distance(coords, labels, num_clusters):
         indices_i = clusters[i]
         if len(indices_i) == 0:
             continue
+
+        clusters_distances = []
         
         for j in range(i + 1, num_clusters):
             indices_j = clusters[j]
@@ -143,8 +145,10 @@ def _calculate_min_inter_cluster_distance(coords, labels, num_clusters):
             
             distances = cdist(cluster_i, cluster_j, metric='euclidean')
             min_dist = distances.min()
-            min_distances.append(min_dist)
-    
+            clusters_distances.append(min_dist)
+
+        min_distances.append(min(clusters_distances) if clusters_distances else float('inf'))
+        
     if min_distances:
         return np.mean(min_distances), np.max(min_distances)
     return 0.0, 0.0
@@ -361,12 +365,6 @@ def connected_component_analysis(S, threshold):
     avg_size = cluster_sizes.mean()
     size_ratio = cluster_sizes.max() / cluster_sizes.sum() if cluster_sizes.sum() > 0 else 0
 
-    # print(avg_distance, max_distance, avg_size, size_ratio)
-    # print(f"Num components: {num_components}")
-    # print(f"Unique labels in labeled_array: {np.unique(labeled_array)}")
-    # print(f"Cluster sizes: {cluster_sizes}")
-    # print(f"Number of coords: {len(all_coords)}")
-    # print(f"Unique values in labels: {np.unique(labels)}")
     
     return {
         f'cc_num_clusters_{thresh_str}': int(num_components),
