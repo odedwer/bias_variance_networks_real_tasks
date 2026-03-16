@@ -361,12 +361,12 @@ def connected_component_analysis(S, threshold):
     avg_size = cluster_sizes.mean()
     size_ratio = cluster_sizes.max() / cluster_sizes.sum() if cluster_sizes.sum() > 0 else 0
 
-    print(avg_distance, max_distance, avg_size, size_ratio)
-    print(f"Num components: {num_components}")
-    print(f"Unique labels in labeled_array: {np.unique(labeled_array)}")
-    print(f"Cluster sizes: {cluster_sizes}")
-    print(f"Number of coords: {len(all_coords)}")
-    print(f"Unique values in labels: {np.unique(labels)}")
+    # print(avg_distance, max_distance, avg_size, size_ratio)
+    # print(f"Num components: {num_components}")
+    # print(f"Unique labels in labeled_array: {np.unique(labeled_array)}")
+    # print(f"Cluster sizes: {cluster_sizes}")
+    # print(f"Number of coords: {len(all_coords)}")
+    # print(f"Unique values in labels: {np.unique(labels)}")
     
     return {
         f'cc_num_clusters_{thresh_str}': int(num_components),
