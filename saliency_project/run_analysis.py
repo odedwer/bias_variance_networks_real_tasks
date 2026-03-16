@@ -134,7 +134,7 @@ for model_dir in SAL_DIR.iterdir():
         rec = {
             "model": model_dir.name,
             "image": image_id,
-            "normalized_entropy": saliency_entropy(S),
+            #"normalized_entropy": saliency_entropy(S),
         }
 
         THRESHOLDS = [0.3]
