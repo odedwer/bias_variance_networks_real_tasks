@@ -135,6 +135,8 @@ def _calculate_min_inter_cluster_distance(coords, labels, num_clusters):
         clusters_distances = []
         
         for j in range(num_clusters):
+            if i == j:
+                continue
             indices_j = clusters[j]
             if len(indices_j) == 0:
                 continue
